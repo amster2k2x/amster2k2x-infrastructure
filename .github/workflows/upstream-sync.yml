@@ -26,7 +26,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: amster2k2x/remnawave-bedolaga-telegram-bot
-          token: ${{ secrets.GH_SYNC_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN }}
           ref: main
           fetch-depth: 0
           persist-credentials: false
@@ -38,7 +38,7 @@ jobs:
           upstream_sync_repo: BEDOLAGA-DEV/remnawave-bedolaga-telegram-bot
           upstream_sync_branch: main
           target_sync_branch: main
-          target_repo_token: ${{ secrets.GH_SYNC_TOKEN }}
+          target_repo_token: ${{ secrets.PAT_TOKEN }}
 
   sync-cabinet:
     if: inputs.service == 'all' || inputs.service == 'cabinet' || github.event_name == 'schedule'
@@ -50,7 +50,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: amster2k2x/bedolaga-cabinet
-          token: ${{ secrets.GH_SYNC_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN }}
           ref: main
           fetch-depth: 0
           persist-credentials: false
@@ -62,7 +62,7 @@ jobs:
           upstream_sync_repo: BEDOLAGA-DEV/bedolaga-cabinet
           upstream_sync_branch: main
           target_sync_branch: main
-          target_repo_token: ${{ secrets.GH_SYNC_TOKEN }}
+          target_repo_token: ${{ secrets.PAT_TOKEN }}
 
   sync-subscription-page:
     if: inputs.service == 'all' || inputs.service == 'subscription-page' || github.event_name == 'schedule'
@@ -74,7 +74,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: amster2k2x/remnawave-subscription-page
-          token: ${{ secrets.GH_SYNC_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN }}
           ref: main
           fetch-depth: 0
           persist-credentials: false
@@ -86,7 +86,7 @@ jobs:
           upstream_sync_repo: remnawave/subscription-page
           upstream_sync_branch: main
           target_sync_branch: main
-          target_repo_token: ${{ secrets.GH_SYNC_TOKEN }}
+          target_repo_token: ${{ secrets.PAT_TOKEN }}
 
   trigger-bot-build:
     needs: sync-bot

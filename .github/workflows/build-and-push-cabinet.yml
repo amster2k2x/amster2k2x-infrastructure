@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: amster2k2x/remnawave-bedolaga-cabinet
-          token: ${{ secrets.GH_SYNC_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN }}
           ref: main
           fetch-depth: 0
           persist-credentials: false
@@ -43,14 +43,14 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: amster2k2x/remnawave-bedolaga-cabinet
-          token: ${{ secrets.GH_SYNC_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN }}
           fetch-depth: 0          # Gitleaks needs full history
           persist-credentials: false
 
       - name: Gitleaks
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_SYNC_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
 
   build-images:
@@ -74,7 +74,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: amster2k2x/remnawave-bedolaga-cabinet
-          token: ${{ secrets.GH_SYNC_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN }}
           ref: main
           fetch-depth: 0
           persist-credentials: false
@@ -98,7 +98,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GH_SYNC_TOKEN }}
+          password: ${{ secrets.PAT_TOKEN }}
 
       - name: Build and push
         id: build
@@ -189,7 +189,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GH_SYNC_TOKEN }}
+          password: ${{ secrets.PAT_TOKEN }}
 
       - name: Trivy — fail on CRITICAL
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -217,7 +217,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: amster2k2x/remnawave-bedolaga-cabinet
-          token: ${{ secrets.GH_SYNC_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN }}
           ref: main
           fetch-depth: 0
           persist-credentials: false
