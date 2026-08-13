@@ -37,7 +37,7 @@ jobs:
     steps:
       - name: Sync bot fork with upstream
         id: sync
-        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.3
         with:
           upstream_sync_repo: BEDOLAGA-DEV/remnawave-bedolaga-telegram-bot
           upstream_sync_branch: main
@@ -53,7 +53,7 @@ jobs:
     steps:
       - name: Sync cabinet fork with upstream
         id: sync
-        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.3
         with:
           upstream_sync_repo: BEDOLAGA-DEV/bedolaga-cabinet
           upstream_sync_branch: main
@@ -69,7 +69,7 @@ jobs:
     steps:
       - name: Sync subscription-page fork with upstream
         id: sync
-        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.3
         with:
           upstream_sync_repo: remnawave/remnawave-subscription-page
           upstream_sync_branch: main
