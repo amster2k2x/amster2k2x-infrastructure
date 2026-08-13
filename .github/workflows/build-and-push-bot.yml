@@ -2,10 +2,6 @@ name: Build bot (reusable)
 
 on:
   workflow_call:
-    inputs:
-      app-token:
-        required: true
-        type: string
 
 env:
   IMAGE: ghcr.io/amster2k2x/remnawave-bedolaga-telegram-bot
@@ -247,7 +243,7 @@ jobs:
         with:
           client-id: ${{ vars.CLIENT_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
-          
+
       - name: Checkout source code
         uses: actions/checkout@v7
         with:

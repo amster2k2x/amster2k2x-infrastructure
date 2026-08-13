@@ -2,10 +2,6 @@ name: Build cabinet (reusable)
 
 on:
   workflow_call:
-    inputs:
-      app-token:
-        required: true
-        type: string
 
 env:
   IMAGE: ghcr.io/amster2k2x/remnawave-bedolaga-cabinet
