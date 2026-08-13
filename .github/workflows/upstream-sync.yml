@@ -35,6 +35,15 @@ jobs:
     outputs:
       synced: ${{ steps.sync.outputs.has_new_commits }}
     steps:
+      - name: Checkout target repo
+        uses: actions/checkout@v7
+        with:
+          repository: amster2k2x/remnawave-bedolaga-telegram-bot
+          token: ${{ needs.generate-token.outputs.token }}
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
       - name: Sync bot fork with upstream
         id: sync
         uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.3
@@ -51,6 +60,15 @@ jobs:
     outputs:
       synced: ${{ steps.sync.outputs.has_new_commits }}
     steps:
+      - name: Checkout target repo
+        uses: actions/checkout@v7
+        with:
+          repository: amster2k2x/bedolaga-cabinet
+          token: ${{ needs.generate-token.outputs.token }}
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
       - name: Sync cabinet fork with upstream
         id: sync
         uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.3
@@ -67,6 +85,15 @@ jobs:
     outputs:
       synced: ${{ steps.sync.outputs.has_new_commits }}
     steps:
+      - name: Checkout target repo
+        uses: actions/checkout@v7
+        with:
+          repository: amster2k2x/remnawave-subscription-page
+          token: ${{ needs.generate-token.outputs.token }}
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+          
       - name: Sync subscription-page fork with upstream
         id: sync
         uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.3
