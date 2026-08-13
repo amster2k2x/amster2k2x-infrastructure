@@ -34,7 +34,7 @@ jobs:
       - name: Send Telegram message with info status
         uses: proDreams/actions-telegram-notifier@main
         with:
-          token: ${{ secrets.TELEGRAM_TOKEN }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
           thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
           status: info
@@ -258,18 +258,12 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v7
         with:
-          repository: amster2k2x/remnawave-bedolaga-telegram-bot
-          token: ${{ steps.app-token.outputs.token }}
-          ref: main
-          fetch-depth: 0
-          persist-credentials: false
-
       - name: Send Telegram message with result status
         uses: proDreams/actions-telegram-notifier@main
         with:
-          token: ${{ secrets.TELEGRAM_TOKEN }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
           thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
           status: ${{ (needs.merge-manifests.result == 'success' && needs.scan-images.result == 'success') && 'success' || 'error' }}
           notify_fields: 'repository,branch,commit,workflow'
-          title: ${{ (needs.merge-manifests.result == 'success' && needs.scan-images.result == 'success') && 'Build finished — bot' || 'Build failed — bot' }}
+          title: ${{ (needs.merge-manifests.result == 'success' && needs.scan-images.result == 'success') && 'Build finished — cabinet' || 'Build failed — cabinet' }}
