@@ -22,30 +22,23 @@ jobs:
     outputs:
       synced: ${{ steps.sync.outputs.has_new_commits }}
     steps:
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ vars.CLIENT_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-
       - name: Checkout target repo
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: amster2k2x/remnawave-bedolaga-telegram-bot
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ secrets.GH_SYNC_TOKEN }}
           ref: main
           fetch-depth: 0
           persist-credentials: false
 
       - name: Sync bot fork with upstream
         id: sync
-        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.3
+        uses: aormsby/Fork-Sync-With-Upstream-action@83d78e8c4bf524e79b091cf257deba4dee9e60df # v3.4.3
         with:
           upstream_sync_repo: BEDOLAGA-DEV/remnawave-bedolaga-telegram-bot
           upstream_sync_branch: main
           target_sync_branch: main
-          target_repo_token: ${{ steps.app-token.outputs.token }}
+          target_repo_token: ${{ secrets.GH_SYNC_TOKEN }}
 
   sync-cabinet:
     if: inputs.service == 'all' || inputs.service == 'cabinet' || github.event_name == 'schedule'
@@ -53,30 +46,23 @@ jobs:
     outputs:
       synced: ${{ steps.sync.outputs.has_new_commits }}
     steps:
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ vars.CLIENT_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-
       - name: Checkout target repo
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: amster2k2x/bedolaga-cabinet
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ secrets.GH_SYNC_TOKEN }}
           ref: main
           fetch-depth: 0
           persist-credentials: false
 
       - name: Sync cabinet fork with upstream
         id: sync
-        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.3
+        uses: aormsby/Fork-Sync-With-Upstream-action@83d78e8c4bf524e79b091cf257deba4dee9e60df # v3.4.3
         with:
           upstream_sync_repo: BEDOLAGA-DEV/bedolaga-cabinet
           upstream_sync_branch: main
           target_sync_branch: main
-          target_repo_token: ${{ steps.app-token.outputs.token }}
+          target_repo_token: ${{ secrets.GH_SYNC_TOKEN }}
 
   sync-subscription-page:
     if: inputs.service == 'all' || inputs.service == 'subscription-page' || github.event_name == 'schedule'
@@ -84,30 +70,23 @@ jobs:
     outputs:
       synced: ${{ steps.sync.outputs.has_new_commits }}
     steps:
-      - name: Generate GitHub App token
-        id: app-token
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ vars.CLIENT_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-
       - name: Checkout target repo
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           repository: amster2k2x/remnawave-subscription-page
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ secrets.GH_SYNC_TOKEN }}
           ref: main
           fetch-depth: 0
           persist-credentials: false
           
       - name: Sync subscription-page fork with upstream
         id: sync
-        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.3
+        uses: aormsby/Fork-Sync-With-Upstream-action@83d78e8c4bf524e79b091cf257deba4dee9e60df # v3.4.3
         with:
           upstream_sync_repo: remnawave/subscription-page
           upstream_sync_branch: main
           target_sync_branch: main
-          target_repo_token: ${{ steps.app-token.outputs.token }}
+          target_repo_token: ${{ secrets.GH_SYNC_TOKEN }}
 
   trigger-bot-build:
     needs: sync-bot
