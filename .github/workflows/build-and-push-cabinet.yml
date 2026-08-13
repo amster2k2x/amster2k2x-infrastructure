@@ -258,6 +258,12 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v7
         with:
+          repository: amster2k2x/remnawave-bedolaga-cabinet
+          token: ${{ steps.app-token.outputs.token }}
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
       - name: Send Telegram message with result status
         uses: proDreams/actions-telegram-notifier@main
         with:
