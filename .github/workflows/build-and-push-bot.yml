@@ -24,6 +24,8 @@ jobs:
         with:
           repository: amster2k2x/remnawave-bedolaga-telegram-bot
           token: ${{ inputs.app-token }}
+          fetch-depth: 0          # Gitleaks needs full history
+          persist-credentials: false
       
       - name: Send Telegram message with info status
         uses: proDreams/actions-telegram-notifier@main
@@ -45,7 +47,8 @@ jobs:
         with:
           repository: amster2k2x/remnawave-bedolaga-telegram-bot
           token: ${{ inputs.app-token }}
-          fetch-depth: 0
+          fetch-depth: 0          # Gitleaks needs full history
+          persist-credentials: false
 
       - name: Gitleaks
         uses: gitleaks/gitleaks-action@v3
@@ -208,6 +211,8 @@ jobs:
         with:
           repository: amster2k2x/remnawave-bedolaga-telegram-bot
           token: ${{ inputs.app-token }}
+          fetch-depth: 0          # Gitleaks needs full history
+          persist-credentials: false
 
       - name: Send Telegram message with result status
         uses: proDreams/actions-telegram-notifier@main
