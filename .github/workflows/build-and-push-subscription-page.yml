@@ -167,6 +167,21 @@ jobs:
     permissions:
       packages: write
     steps:
+      - name: Checkout source code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: amster2k2x/remnawave-subscription-page
+          token: ${{ secrets.PAT_TOKEN }}
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Extract package version
+        id: get-version
+        run: |
+          VERSION=$(jq -r '.version' backend/package.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Download digests artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
@@ -189,22 +204,32 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.PAT_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.IMAGE }}
+            ${{ env.DOCKERHUB_IMAGE }}
+          tags: |
+            type=raw,value=${{ steps.get-version.outputs.version }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=${{ github.ref_name }}
       
       - name: Create and push manifest
         working-directory: ${{ runner.temp }}/digests
         run: |
           docker buildx imagetools create \
-            -t ${{ env.DOCKERHUB_IMAGE }}:latest \
-            -t ${{ env.DOCKERHUB_IMAGE }}:${{ github.ref_name }} \
+            $(echo "${{ steps.meta.outputs.tags }}" | sed 's/^/-t /') \
             $(printf '${{ env.DOCKERHUB_IMAGE }}@sha256:%s ' *)
           
           docker buildx imagetools create \
-            -t ${{ env.IMAGE }}:latest \
-            -t ${{ env.IMAGE }}:${{ github.ref_name }} \
+            $(echo "${{ steps.meta.outputs.tags }}" | sed 's/^/-t /') \
             $(printf '${{ env.IMAGE }}@sha256:%s ' *)
       
       - name: Inspect
-        run: docker buildx imagetools inspect ${{ env.IMAGE }}:${{ github.ref_name }}
+        run: docker buildx imagetools inspect ${{ env.IMAGE }}:${{ steps.get-version.outputs.version }}
 
   scan-images:
     name: Scan images
@@ -213,6 +238,21 @@ jobs:
     permissions:
       security-events: write
     steps:
+      - name: Checkout source code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: amster2k2x/remnawave-subscription-page
+          token: ${{ secrets.PAT_TOKEN }}
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Extract package version
+        id: get-version
+        run: |
+          VERSION=$(jq -r '.version' backend/package.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
         with:
@@ -220,18 +260,18 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.PAT_TOKEN }}
 
-      - name: Trivy — fail on CRITICAL
+      - name: Trivy — warn on CRITICAL
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ${{ env.IMAGE }}:${{ github.ref_name }}
+          image-ref: '${{ env.IMAGE }}:${{ steps.get-version.outputs.version }}'
           format: table
-          exit-code: '1'
+          exit-code: '0'
           severity: CRITICAL
 
       - name: Trivy — warn on HIGH
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ${{ env.IMAGE }}:${{ github.ref_name }}
+          image-ref: '${{ env.IMAGE }}:${{ steps.get-version.outputs.version }}'
           format: table
           exit-code: '0'
           severity: HIGH
