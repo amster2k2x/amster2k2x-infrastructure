@@ -16,10 +16,11 @@ permissions:
   contents: read
 
 jobs:
-  generate-token:
+  sync-bot:
+    if: inputs.service == 'all' || inputs.service == 'bot' || github.event_name == 'schedule'
     runs-on: ubuntu-latest
     outputs:
-      token: ${{ steps.app-token.outputs.token }}
+      synced: ${{ steps.sync.outputs.has_new_commits }}
     steps:
       - name: Generate GitHub App token
         id: app-token
@@ -28,25 +29,11 @@ jobs:
           client-id: ${{ vars.CLIENT_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
-      - name: Validate token creation
-        run: |
-          if [ -z "${{ steps.app-token.outputs.token }}" ]; then
-            echo "GitHub App token was not created"
-            exit 1
-          fi
-
-  sync-bot:
-    needs: generate-token
-    if: inputs.service == 'all' || inputs.service == 'bot' || github.event_name == 'schedule'
-    runs-on: ubuntu-latest
-    outputs:
-      synced: ${{ steps.sync.outputs.has_new_commits }}
-    steps:
       - name: Checkout target repo
         uses: actions/checkout@v7
         with:
           repository: amster2k2x/remnawave-bedolaga-telegram-bot
-          token: ${{ needs.generate-token.outputs.token }}
+          token: ${{ steps.app-token.outputs.token }}
           ref: main
           fetch-depth: 0
           persist-credentials: false
@@ -58,20 +45,26 @@ jobs:
           upstream_sync_repo: BEDOLAGA-DEV/remnawave-bedolaga-telegram-bot
           upstream_sync_branch: main
           target_sync_branch: main
-          target_repo_token: ${{ needs.generate-token.outputs.token }}
+          target_repo_token: ${{ steps.app-token.outputs.token }}
 
   sync-cabinet:
-    needs: generate-token
     if: inputs.service == 'all' || inputs.service == 'cabinet' || github.event_name == 'schedule'
     runs-on: ubuntu-latest
     outputs:
       synced: ${{ steps.sync.outputs.has_new_commits }}
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Checkout target repo
         uses: actions/checkout@v7
         with:
           repository: amster2k2x/bedolaga-cabinet
-          token: ${{ needs.generate-token.outputs.token }}
+          token: ${{ steps.app-token.outputs.token }}
           ref: main
           fetch-depth: 0
           persist-credentials: false
@@ -83,20 +76,26 @@ jobs:
           upstream_sync_repo: BEDOLAGA-DEV/bedolaga-cabinet
           upstream_sync_branch: main
           target_sync_branch: main
-          target_repo_token: ${{ needs.generate-token.outputs.token }}
+          target_repo_token: ${{ steps.app-token.outputs.token }}
 
   sync-subscription-page:
-    needs: generate-token
     if: inputs.service == 'all' || inputs.service == 'subscription-page' || github.event_name == 'schedule'
     runs-on: ubuntu-latest
     outputs:
       synced: ${{ steps.sync.outputs.has_new_commits }}
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Checkout target repo
         uses: actions/checkout@v7
         with:
           repository: amster2k2x/remnawave-subscription-page
-          token: ${{ needs.generate-token.outputs.token }}
+          token: ${{ steps.app-token.outputs.token }}
           ref: main
           fetch-depth: 0
           persist-credentials: false
@@ -108,40 +107,31 @@ jobs:
           upstream_sync_repo: remnawave/subscription-page
           upstream_sync_branch: main
           target_sync_branch: main
-          target_repo_token: ${{ needs.generate-token.outputs.token }}
+          target_repo_token: ${{ steps.app-token.outputs.token }}
 
   trigger-bot-build:
-    needs: [generate-token, sync-bot]
+    needs: sync-bot
     if: needs.sync-bot.outputs.synced == 'true' || inputs.service == 'bot'
     permissions:
       contents: read
       packages: write
       security-events: write
     uses: ./.github/workflows/build-and-push-bot.yml
-    with:
-      app-token: ${{ needs.generate-token.outputs.token }}
-    secrets: inherit
 
   trigger-cabinet-build:
-    needs: [generate-token, sync-cabinet]
+    needs: sync-cabinet
     if: needs.sync-cabinet.outputs.synced == 'true' || inputs.service == 'cabinet'
     permissions:
       contents: read
       packages: write
       security-events: write
     uses: ./.github/workflows/build-and-push-cabinet.yml
-    with:
-      app-token: ${{ needs.generate-token.outputs.token }}
-    secrets: inherit
 
   trigger-subscription-page-build:
-    needs: [generate-token, sync-subscription-page]
+    needs: sync-subscription-page
     if: needs.sync-subscription-page.outputs.synced == 'true' || inputs.service == 'subscription-page'
     permissions:
       contents: read
       packages: write
       security-events: write
     uses: ./.github/workflows/build-and-push-subscription-page.yml
-    with:
-      app-token: ${{ needs.generate-token.outputs.token }}
-    secrets: inherit
