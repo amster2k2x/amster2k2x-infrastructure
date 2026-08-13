@@ -128,10 +128,14 @@ jobs:
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Checkout source code
-        uses: actions/download-artifact@v8
+        uses: actions/checkout@v7
         with:
           repository: amster2k2x/remnawave-subscription-page
           token: ${{ steps.app-token.outputs.token }}
+
+      - name: Download frontend build artifact
+        uses: actions/download-artifact@v8
+        with:
           name: frontend-dist
           path: frontend/dist
       
