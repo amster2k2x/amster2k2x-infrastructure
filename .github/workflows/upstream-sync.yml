@@ -25,8 +25,15 @@ jobs:
         id: app-token
         uses: actions/create-github-app-token@v3
         with:
-          client-id: ${{ secrets.APP_ID }}
+          client-id: ${{ vars.CLIENT_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Validate token creation
+        run: |
+          if [ -z "${{ steps.app-token.outputs.token }}" ]; then
+            echo "GitHub App token was not created"
+            exit 1
+          fi
 
   sync-bot:
     needs: generate-token
