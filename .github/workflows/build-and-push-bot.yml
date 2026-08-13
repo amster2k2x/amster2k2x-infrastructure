@@ -188,7 +188,7 @@ jobs:
       - name: Trivy — fail on CRITICAL
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ${{ env.IMAGE }}@${{ github.ref_name }}
+          image-ref: ${{ env.IMAGE }}:${{ github.ref_name }}
           format: table
           exit-code: '1'
           severity: CRITICAL
@@ -196,7 +196,7 @@ jobs:
       - name: Trivy — warn on HIGH
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ${{ env.IMAGE }}@${{ github.ref_name }}
+          image-ref: ${{ env.IMAGE }}:${{ github.ref_name }}
           format: table
           exit-code: '0'
           severity: HIGH
