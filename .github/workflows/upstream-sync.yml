@@ -81,6 +81,10 @@ jobs:
   trigger-bot-build:
     needs: [generate-token, sync-bot]
     if: needs.sync-bot.outputs.synced == 'true' || inputs.service == 'bot'
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
     uses: ./.github/workflows/build-and-push-bot.yml
     with:
       app-token: ${{ needs.generate-token.outputs.token }}
@@ -89,6 +93,10 @@ jobs:
   trigger-cabinet-build:
     needs: [generate-token, sync-cabinet]
     if: needs.sync-cabinet.outputs.synced == 'true' || inputs.service == 'cabinet'
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
     uses: ./.github/workflows/build-and-push-cabinet.yml
     with:
       app-token: ${{ needs.generate-token.outputs.token }}
@@ -97,6 +105,10 @@ jobs:
   trigger-subscription-page-build:
     needs: [generate-token, sync-subscription-page]
     if: needs.sync-subscription-page.outputs.synced == 'true' || inputs.service == 'subscription-page'
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
     uses: ./.github/workflows/build-and-push-subscription-page.yml
     with:
       app-token: ${{ needs.generate-token.outputs.token }}
