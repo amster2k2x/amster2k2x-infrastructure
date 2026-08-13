@@ -27,7 +27,8 @@ jobs:
         with:
           repository: amster2k2x/remnawave-bedolaga-telegram-bot
           token: ${{ steps.app-token.outputs.token }}
-          fetch-depth: 0          # Gitleaks needs full history
+          ref: main
+          fetch-depth: 0
           persist-credentials: false
       
       - name: Send Telegram message with info status
@@ -95,6 +96,9 @@ jobs:
         with:
           repository: amster2k2x/remnawave-bedolaga-telegram-bot
           token: ${{ steps.app-token.outputs.token }}
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
       
       - name: Prepare platform pair
         run: |
@@ -250,7 +254,8 @@ jobs:
         with:
           repository: amster2k2x/remnawave-bedolaga-telegram-bot
           token: ${{ steps.app-token.outputs.token }}
-          fetch-depth: 0          # Gitleaks needs full history
+          ref: main
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Send Telegram message with result status
