@@ -1,0 +1,103 @@
+name: Upstream sync + build trigger
+
+on:
+  schedule:
+    - cron: '5 7 * * 6'   # Saturday 07:05 UTC
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Which service to sync+build (or "all")'
+        required: true
+        default: 'all'
+        type: choice
+        options: [all, bot, cabinet, subscription-page]
+
+permissions:
+  contents: read
+
+jobs:
+  generate-token:
+    runs-on: ubuntu-latest
+    outputs:
+      token: ${{ steps.app-token.outputs.token }}
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: tibdex/github-app-token@v2
+        with:
+          app_id: ${{ secrets.APP_ID }}
+          private_key: ${{ secrets.APP_PRIVATE_KEY }}
+          installation_retrieval_mode: id
+          installation_retrieval_payload: ${{ secrets.APP_INSTALLATION_ID }}
+
+  sync-bot:
+    needs: generate-token
+    if: inputs.service == 'all' || inputs.service == 'bot' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    outputs:
+      synced: ${{ steps.sync.outputs.has_new_commits }}
+    steps:
+      - name: Sync bot fork with upstream
+        id: sync
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
+        with:
+          upstream_sync_repo: BEDOLAGA-DEV/remnawave-bedolaga-telegram-bot
+          upstream_sync_branch: main
+          target_sync_branch: main
+          target_repo_token: ${{ needs.generate-token.outputs.token }}
+
+  sync-cabinet:
+    needs: generate-token
+    if: inputs.service == 'all' || inputs.service == 'cabinet' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    outputs:
+      synced: ${{ steps.sync.outputs.has_new_commits }}
+    steps:
+      - name: Sync cabinet fork with upstream
+        id: sync
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
+        with:
+          upstream_sync_repo: BEDOLAGA-DEV/bedolaga-cabinet
+          upstream_sync_branch: main
+          target_sync_branch: main
+          target_repo_token: ${{ needs.generate-token.outputs.token }}
+
+  sync-subscription-page:
+    needs: generate-token
+    if: inputs.service == 'all' || inputs.service == 'subscription-page' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    outputs:
+      synced: ${{ steps.sync.outputs.has_new_commits }}
+    steps:
+      - name: Sync subscription-page fork with upstream
+        id: sync
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
+        with:
+          upstream_sync_repo: remnawave/remnawave-subscription-page
+          upstream_sync_branch: main
+          target_sync_branch: main
+          target_repo_token: ${{ needs.generate-token.outputs.token }}
+
+  trigger-bot-build:
+    needs: [generate-token, sync-bot]
+    if: needs.sync-bot.outputs.synced == 'true' || inputs.service == 'bot'
+    uses: ./.github/workflows/build-and-push-bot.yml
+    with:
+      app-token: ${{ needs.generate-token.outputs.token }}
+    secrets: inherit
+
+  trigger-cabinet-build:
+    needs: [generate-token, sync-cabinet]
+    if: needs.sync-cabinet.outputs.synced == 'true' || inputs.service == 'cabinet'
+    uses: ./.github/workflows/build-and-push-cabinet.yml
+    with:
+      app-token: ${{ needs.generate-token.outputs.token }}
+    secrets: inherit
+
+  trigger-subscription-page-build:
+    needs: [generate-token, sync-subscription-page]
+    if: needs.sync-subscription-page.outputs.synced == 'true' || inputs.service == 'subscription-page'
+    uses: ./.github/workflows/build-and-push-subscription-page.yml
+    with:
+      app-token: ${{ needs.generate-token.outputs.token }}
+    secrets: inherit
