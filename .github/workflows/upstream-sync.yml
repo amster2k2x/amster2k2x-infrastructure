@@ -10,7 +10,7 @@ on:
         required: true
         default: 'all'
         type: choice
-        options: [all, bot, cabinet, subscription-page]
+        options: [all, bot, cabinet, subscription-page, remnawave-backend, remnawave-frontend, remnawave-node]
 
 permissions:
   contents: read
@@ -23,7 +23,7 @@ jobs:
       synced: ${{ steps.sync.outputs.has_new_commits }}
     steps:
       - name: Checkout target repo
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@v7
         with:
           repository: amster2k2x/remnawave-bedolaga-telegram-bot
           token: ${{ secrets.PAT_TOKEN }}
@@ -33,7 +33,7 @@ jobs:
 
       - name: Sync bot fork with upstream
         id: sync
-        uses: aormsby/Fork-Sync-With-Upstream-action@83d78e8c4bf524e79b091cf257deba4dee9e60df # v3.4.3
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.3
         with:
           upstream_sync_repo: BEDOLAGA-DEV/remnawave-bedolaga-telegram-bot
           upstream_sync_branch: main
@@ -47,7 +47,7 @@ jobs:
       synced: ${{ steps.sync.outputs.has_new_commits }}
     steps:
       - name: Checkout target repo
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@v7
         with:
           repository: amster2k2x/bedolaga-cabinet
           token: ${{ secrets.PAT_TOKEN }}
@@ -57,7 +57,7 @@ jobs:
 
       - name: Sync cabinet fork with upstream
         id: sync
-        uses: aormsby/Fork-Sync-With-Upstream-action@83d78e8c4bf524e79b091cf257deba4dee9e60df # v3.4.3
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.3
         with:
           upstream_sync_repo: BEDOLAGA-DEV/bedolaga-cabinet
           upstream_sync_branch: main
@@ -71,7 +71,7 @@ jobs:
       synced: ${{ steps.sync.outputs.has_new_commits }}
     steps:
       - name: Checkout target repo
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@v7
         with:
           repository: amster2k2x/remnawave-subscription-page
           token: ${{ secrets.PAT_TOKEN }}
@@ -81,9 +81,81 @@ jobs:
           
       - name: Sync subscription-page fork with upstream
         id: sync
-        uses: aormsby/Fork-Sync-With-Upstream-action@83d78e8c4bf524e79b091cf257deba4dee9e60df # v3.4.3
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.3
         with:
           upstream_sync_repo: remnawave/subscription-page
+          upstream_sync_branch: main
+          target_sync_branch: main
+          target_repo_token: ${{ secrets.PAT_TOKEN }}
+
+  sync-remnawave-backend:
+    if: inputs.service == 'all' || inputs.service == 'remnawave-backend' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    outputs:
+      synced: ${{ steps.sync.outputs.has_new_commits }}
+    steps:
+      - name: Checkout target repo
+        uses: actions/checkout@v7
+        with:
+          repository: amster2k2x/remnawave-backend
+          token: ${{ secrets.PAT_TOKEN }}
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+          
+      - name: Sync remnawave-backend fork with upstream
+        id: sync
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.3
+        with:
+          upstream_sync_repo: remnawave/backend
+          upstream_sync_branch: main
+          target_sync_branch: main
+          target_repo_token: ${{ secrets.PAT_TOKEN }}
+
+  sync-remnawave-frontend:
+    if: inputs.service == 'all' || inputs.service == 'remnawave-frontend' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    outputs:
+      synced: ${{ steps.sync.outputs.has_new_commits }}
+    steps:
+      - name: Checkout target repo
+        uses: actions/checkout@v7
+        with:
+          repository: amster2k2x/remnawave-frontend
+          token: ${{ secrets.PAT_TOKEN }}
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+          
+      - name: Sync remnawave-frontend fork with upstream
+        id: sync
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.3
+        with:
+          upstream_sync_repo: remnawave/frontend
+          upstream_sync_branch: main
+          target_sync_branch: main
+          target_repo_token: ${{ secrets.PAT_TOKEN }}
+
+  sync-remnawave-node:
+    if: inputs.service == 'all' || inputs.service == 'remnawave-node' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    outputs:
+      synced: ${{ steps.sync.outputs.has_new_commits }}
+    steps:
+      - name: Checkout target repo
+        uses: actions/checkout@v7
+        with:
+          repository: amster2k2x/remnawave-node
+          token: ${{ secrets.PAT_TOKEN }}
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+          
+      - name: Sync remnawave-node fork with upstream
+        id: sync
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.3
+        with:
+          upstream_sync_repo: remnawave/node
           upstream_sync_branch: main
           target_sync_branch: main
           target_repo_token: ${{ secrets.PAT_TOKEN }}
@@ -115,5 +187,35 @@ jobs:
       contents: read
       packages: write
       security-events: write
-    uses: ./.github/workflows/build-and-push-subscription-page.yml
+    uses: ./.github/workflows/build-and-push-rw-subscription-page.yml
+    secrets: inherit
+
+  trigger-remnawave-backend-build:
+    needs: sync-remnawave-backend
+    if: needs.sync-remnawave-backend.outputs.synced == 'true' || inputs.service == 'remnawave-backend'
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    uses: ./.github/workflows/build-and-push-rw-backend.yml
+    secrets: inherit
+
+  trigger-remnawave-frontend-build:
+    needs: sync-remnawave-frontend
+    if: needs.sync-remnawave-frontend.outputs.synced == 'true' || inputs.service == 'remnawave-frontend'
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    uses: ./.github/workflows/build-and-push-rw-frontend.yml
+    secrets: inherit
+
+  trigger-remnawave-node-build:
+    needs: sync-remnawave-node
+    if: needs.sync-remnawave-node.outputs.synced == 'true' || inputs.service == 'remnawave-node'
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    uses: ./.github/workflows/build-and-push-rw-node.yml
     secrets: inherit
