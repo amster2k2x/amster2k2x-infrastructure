@@ -30,6 +30,11 @@ on:
         required: false
         type: string
         default: .version
+      dockerfile:
+        description: 'Path to Dockerfile'
+        required: false
+        type: string
+        default: Dockerfile
       build_args:
         description: 'Extra docker build-args, one KEY=VALUE per line'
         required: false
@@ -170,7 +175,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: Dockerfile
+          file: ${{ dockerfile }}
           platforms: ${{ matrix.platform }}
           push: true
           build-args: ${{ inputs.build_args }}
