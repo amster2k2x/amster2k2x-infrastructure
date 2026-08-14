@@ -158,11 +158,12 @@ jobs:
           
       - name: Sync remnawave-node fork with upstream
         id: sync
-        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.3
+        uses: silvzr/Fork-Sync-With-Upstream-action@v3.4.3
         with:
           upstream_sync_repo: remnawave/node
           upstream_sync_branch: main
           upstream_repo_access_token: ${{ secrets.PAT_TOKEN }}
+          target_sync_repo: amster2k2x/remnawave-node
           target_sync_branch: main
           target_repo_token: ${{ secrets.PAT_TOKEN }}
 
