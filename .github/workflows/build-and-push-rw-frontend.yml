@@ -91,6 +91,7 @@ jobs:
         with:
           files: remnawave-frontend.zip
           tag_name: ${{ steps.get-version.outputs.version }}
+          repository: amster2k2x/remnawave-frontend
           generate_release_notes: true
           append_body: true
           make_latest: true

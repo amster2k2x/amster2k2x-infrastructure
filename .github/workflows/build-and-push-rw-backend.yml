@@ -6,6 +6,7 @@ on:
 env:
   IMAGE: ghcr.io/amster2k2x/remnawave-backend
   DOCKERHUB_IMAGE: sammosdev/remnawave-backend
+  FRONTEND_URL: https://github.com/amster2k2x/remnawave-frontend/releases/latest/download/remnawave-frontend.zip
 
 permissions:
   contents: read
@@ -108,6 +109,8 @@ jobs:
           file: Dockerfile
           platforms: ${{ matrix.platform }}
           push: true
+          build-args: |
+            FRONTEND_URL=${{ env.FRONTEND_URL }}
           outputs: |
             type=image,"name=${{ env.IMAGE }},${{ env.DOCKERHUB_IMAGE }}",push-by-digest=true,name-canonical=true,push=true
           
