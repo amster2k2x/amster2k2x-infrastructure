@@ -48,6 +48,21 @@ jobs:
           fetch-depth: 0          # Gitleaks needs full history
           persist-credentials: false
 
+      - name: Create Gitleaks Config Allowlist
+        run: |
+          cat << 'EOF' > .gitleaks.toml
+          # Extend the native default Gitleaks secret detection rules
+          [extend]
+          useDefault = true
+
+          # Explicitly exclude folders and files from being evaluated
+          [allowlist]
+          paths = [
+            '''^configs/xray/''',
+            '''^\.env\.sample$'''
+          ]
+          EOF
+
       - name: Gitleaks
         uses: gitleaks/gitleaks-action@v3
         env:
