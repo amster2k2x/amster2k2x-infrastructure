@@ -1,4 +1,4 @@
-name: Build bot (reusable)
+name: Build Remnawave Backend (reusable)
 
 on:
   workflow_call:
