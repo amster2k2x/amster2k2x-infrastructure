@@ -1,4 +1,4 @@
-name: Build Remnawave frontend (reusable)
+name: Build Remnawave Frontend (reusable)
 
 on:
   workflow_call:

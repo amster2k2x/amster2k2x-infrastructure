@@ -1,4 +1,4 @@
-name: Build subscription page (reusable)
+name: Build Remnawave Subscription Page (reusable)
 
 on:
   workflow_call:
