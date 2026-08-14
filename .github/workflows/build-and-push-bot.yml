@@ -50,10 +50,13 @@ jobs:
       - name: Create Gitleaks Ignore File
         run: |
           cat << 'EOF' > .gitleaksignore
-          :::docs/
-          :::README.md
-          :::tests/
-          :::.env.example
+          # Ignore entire directories and all sub-files
+          **/docs/**
+          **/tests/**
+          
+          # Ignore specific standalone files anywhere in the repo
+          **/.env.example
+          **/README.md
           EOF
 
       - name: Gitleaks
