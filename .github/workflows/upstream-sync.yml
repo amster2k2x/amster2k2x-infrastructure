@@ -38,6 +38,7 @@ jobs:
           upstream_sync_repo: BEDOLAGA-DEV/remnawave-bedolaga-telegram-bot
           upstream_sync_branch: main
           target_sync_branch: main
+          target_repo_path: amster2k2x/remnawave-bedolaga-telegram-bot
           target_repo_token: ${{ secrets.PAT_TOKEN }}
 
   sync-cabinet:
@@ -62,6 +63,7 @@ jobs:
           upstream_sync_repo: BEDOLAGA-DEV/bedolaga-cabinet
           upstream_sync_branch: main
           target_sync_branch: main
+          target_repo_path: amster2k2x/remnawave-bedolaga-cabinet
           target_repo_token: ${{ secrets.PAT_TOKEN }}
 
   sync-subscription-page:
@@ -86,6 +88,7 @@ jobs:
           upstream_sync_repo: remnawave/subscription-page
           upstream_sync_branch: main
           target_sync_branch: main
+          target_repo_path: amster2k2x/remnawave-subscription-page
           target_repo_token: ${{ secrets.PAT_TOKEN }}
 
   sync-remnawave-backend:
@@ -110,6 +113,7 @@ jobs:
           upstream_sync_repo: remnawave/backend
           upstream_sync_branch: main
           target_sync_branch: main
+          target_repo_path: amster2k2x/remnawave-backend
           target_repo_token: ${{ secrets.PAT_TOKEN }}
 
   sync-remnawave-frontend:
@@ -134,6 +138,7 @@ jobs:
           upstream_sync_repo: remnawave/frontend
           upstream_sync_branch: main
           target_sync_branch: main
+          target_repo_path: amster2k2x/remnawave-frontend
           target_repo_token: ${{ secrets.PAT_TOKEN }}
 
   sync-remnawave-node:
@@ -158,6 +163,7 @@ jobs:
           upstream_sync_repo: remnawave/node
           upstream_sync_branch: main
           target_sync_branch: main
+          target_repo_path: amster2k2x/remnawave-node
           target_repo_token: ${{ secrets.PAT_TOKEN }}
 
   trigger-bot-build:
