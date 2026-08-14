@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   build:
-    uses: ./.github/workflows/_docker-build-push.yml
+    uses: ./.github/workflows/build-and-push-template.yml
     with:
       repo: amster2k2x/remnawave-node
       display_name: Remnawave Node
