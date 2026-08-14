@@ -47,16 +47,21 @@ jobs:
           fetch-depth: 0          # Gitleaks needs full history
           persist-credentials: false
 
-      - name: Create Gitleaks Ignore File
+      - name: Create Gitleaks Config Allowlist
         run: |
-          cat << 'EOF' > .gitleaksignore
-          # Ignore entire directories and all sub-files
-          **/docs/**
-          **/tests/**
-          
-          # Ignore specific standalone files anywhere in the repo
-          **/.env.example
-          **/README.md
+          cat << 'EOF' > .gitleaks.toml
+          # Extend the native default Gitleaks secret detection rules
+          [extend]
+          useDefault = true
+
+          # Explicitly exclude folders and files from being evaluated
+          [allowlist]
+          paths = [
+            '''^docs/''',
+            '''^tests/''',
+            '''^README\.md$''',
+            '''^\.env\.example$'''
+          ]
           EOF
 
       - name: Gitleaks
