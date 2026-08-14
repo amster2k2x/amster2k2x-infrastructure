@@ -175,7 +175,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          file: ${{ dockerfile }}
+          file: ${{ inputs.dockerfile }}
           platforms: ${{ matrix.platform }}
           push: true
           build-args: ${{ inputs.build_args }}
