@@ -144,7 +144,7 @@ jobs:
       - name: Extract package version
         id: get-version
         run: |
-          VERSION=$(jq -r '.version' ./pyproject.toml)
+          VERSION=$(jq -r '.version' ./package.json)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Download digests
