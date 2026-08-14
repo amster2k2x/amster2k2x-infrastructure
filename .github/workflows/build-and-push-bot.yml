@@ -270,7 +270,7 @@ jobs:
       - name: Checkout source code
         uses: actions/checkout@v7
         with:
-          repository: amster2k2x/remnawave-bedolaga-cabinet
+          repository: amster2k2x/remnawave-bedolaga-telegram-bot
           token: ${{ secrets.PAT_TOKEN }}
           ref: main
           fetch-depth: 0
