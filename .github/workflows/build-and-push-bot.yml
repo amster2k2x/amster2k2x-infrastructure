@@ -47,6 +47,15 @@ jobs:
           fetch-depth: 0          # Gitleaks needs full history
           persist-credentials: false
 
+      - name: Create Gitleaks Ignore File
+        run: |
+          cat << 'EOF' > .gitleaksignore
+          :::docs/
+          :::README.md
+          :::tests/
+          :::.env.example
+          EOF
+
       - name: Gitleaks
         uses: gitleaks/gitleaks-action@v3
         env:
