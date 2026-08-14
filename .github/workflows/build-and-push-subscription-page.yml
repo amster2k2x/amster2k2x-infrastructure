@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@v7
         with:
           repository: amster2k2x/remnawave-subscription-page
           token: ${{ secrets.PAT_TOKEN }}
@@ -22,7 +22,7 @@ jobs:
           persist-credentials: false
       
       - name: Send Telegram message with info status
-        uses: proDreams/actions-telegram-notifier@a031dcd7087ef9fad3de9f67cd6ba116c5f9052b # main
+        uses: proDreams/actions-telegram-notifier@main
         with:
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -37,7 +37,7 @@ jobs:
       security-events: write
     steps:
       - name: Checkout source code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@v7
         with:
           repository: amster2k2x/remnawave-subscription-page
           token: ${{ secrets.PAT_TOKEN }}
@@ -45,16 +45,16 @@ jobs:
           persist-credentials: false
 
       - name: Gitleaks
-        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3
+        uses: gitleaks/gitleaks-action@v3
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_SYNC_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
 
   build-frontend:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@v7
         with:
           repository: amster2k2x/remnawave-subscription-page
           token: ${{ secrets.PAT_TOKEN }}
@@ -63,7 +63,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        uses: actions/setup-node@v7
         with:
           node-version: '24.x'
           cache: npm
@@ -76,7 +76,7 @@ jobs:
           npm run start:build
 
       - name: Upload frontend build artifact    
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-dist
           path: frontend/dist
@@ -107,7 +107,7 @@ jobs:
           echo "PLATFORM_PAIR=${platform//\//-}" >> "$GITHUB_ENV"
 
       - name: Checkout source code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@v7
         with:
           repository: amster2k2x/remnawave-subscription-page
           token: ${{ secrets.PAT_TOKEN }}
@@ -116,22 +116,22 @@ jobs:
           persist-credentials: false
       
       - name: Download frontend build artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@v8
         with:
           name: frontend-dist
           path: frontend/dist
       
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -139,7 +139,7 @@ jobs:
 
       - name: Build and push by digest
         id: build
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile
@@ -153,7 +153,7 @@ jobs:
           touch "${{ runner.temp }}/digests/${digest#sha256:}"
 
       - name: Upload digest artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        uses: actions/upload-artifact@v7
         with:
           name: digests-${{ env.PLATFORM_PAIR }}
           path: ${{ runner.temp }}/digests/*
@@ -168,7 +168,7 @@ jobs:
       packages: write
     steps:
       - name: Checkout source code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@v7
         with:
           repository: amster2k2x/remnawave-subscription-page
           token: ${{ secrets.PAT_TOKEN }}
@@ -183,23 +183,23 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Download digests artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@v8
         with:
           path: ${{ runner.temp }}/digests
           pattern: digests-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+        uses: docker/setup-buildx-action@v4
       
       - name: Login to Docker Hub
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -207,7 +207,7 @@ jobs:
 
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             ${{ env.IMAGE }}
@@ -215,7 +215,6 @@ jobs:
           tags: |
             type=raw,value=${{ steps.get-version.outputs.version }}
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=raw,value=${{ github.ref_name }}
       
       - name: Create and push manifest
         working-directory: ${{ runner.temp }}/digests
@@ -239,7 +238,7 @@ jobs:
       security-events: write
     steps:
       - name: Checkout source code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@v7
         with:
           repository: amster2k2x/remnawave-subscription-page
           token: ${{ secrets.PAT_TOKEN }}
@@ -254,14 +253,14 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.PAT_TOKEN }}
 
       - name: Trivy — warn on CRITICAL
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: '${{ env.IMAGE }}:${{ steps.get-version.outputs.version }}'
           format: table
@@ -269,7 +268,7 @@ jobs:
           severity: CRITICAL
 
       - name: Trivy — warn on HIGH
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: '${{ env.IMAGE }}:${{ steps.get-version.outputs.version }}'
           format: table
@@ -283,7 +282,7 @@ jobs:
     if: always()
     steps:
       - name: Checkout source code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        uses: actions/checkout@v7
         with:
           repository: amster2k2x/remnawave-subscription-page
           token: ${{ secrets.PAT_TOKEN }}
@@ -292,7 +291,7 @@ jobs:
           persist-credentials: false
 
       - name: Send Telegram message
-        uses: proDreams/actions-telegram-notifier@a031dcd7087ef9fad3de9f67cd6ba116c5f9052b # main
+        uses: proDreams/actions-telegram-notifier@main
         with:
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
