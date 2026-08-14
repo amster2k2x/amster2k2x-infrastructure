@@ -233,7 +233,9 @@ jobs:
       - name: Extract package version
         id: get-version
         run: |
-          VERSION=$(jq -r '.version' ./pyproject.toml)
+          # Finds line starting with version, splits by double-quotes, grabs the middle value
+          VERSION=$(grep "^version" ./pyproject.toml | awk -F'"' '{print $2}')
+          
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GitHub Container Registry
