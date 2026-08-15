@@ -27,13 +27,13 @@ jobs:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           message_thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }} # Supports forum topics natively!
-          format: markdown
+          format: html
           message: |
-            🚀 *Build Started* 🚀
+            🚀 <b>Build Started</b> 🚀
 
-            *Service:* ${{ inputs.display_name }}
-            *Trigger:* ${{ github.event_name }} by ${{ github.actor }}
-            *Repository:* ${{ inputs.repo }}
+            <b>Service:</b> ${{ inputs.display_name }}
+            <b>Trigger:</b> ${{ github.event_name }} by ${{ github.actor }}
+            <b>Repository:</b> ${{ inputs.repo }}
 
   secret-scan:
     runs-on: ubuntu-latest
@@ -127,17 +127,17 @@ jobs:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           message_thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
-          format: markdown
+          format: html
           message: |
-            ${{ (needs.merge-manifests.result == 'success' && needs.scan-images.result == 'success') && '✅ *Build Finished Successfully*' || '❌ *Build Failed*' }}
-            
-            *Service:* ${{ inputs.display_name }}
-            *Trigger:* ${{ github.event_name }}
-            *Repository:* ${{ inputs.repo }}
+            ${{ (needs.merge-manifests.result == 'success' && needs.scan-images.result == 'success') && '✅ <b>Build Finished Successfully</b>' || '❌ <b>Build Failed</b>' }}
 
-            *Pipeline Details:*
+            <b>Service:</b> ${{ inputs.display_name }}
+            <b>Trigger:</b> ${{ github.event_name }}
+            <b>Repository:</b> ${{ inputs.repo }}
+
+            <b>Pipeline Details:</b>
             • Manifest Merge: ${{ needs.merge-manifests.result }}
             • Security Scan: ${{ needs.scan-images.result }}
             • Image build: ${{ needs.merge-manifests.result }}
 
-            🔗 [View Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            🔗 <a href="https://github.com/${{ inputs.repo }}/actions/runs/${{ github.run_id }}">View Workflow Run</a>
