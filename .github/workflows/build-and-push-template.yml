@@ -81,14 +81,18 @@ jobs:
           persist-credentials: false
 
       - name: Send Telegram message with info status
-        uses: proDreams/actions-telegram-notifier@main
+        uses: appleboy/telegram-action@master
         with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
-          thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
-          status: info
-          notify_fields: 'repository,branch,commit,workflow'
-          title: 'Build started — ${{ inputs.display_name }}'
+          message_thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }} # Supports forum topics natively!
+          format: markdown
+          message: |
+            🚀 *Build Started* 🚀
+            
+            *Service:* ${{ github.event.inputs.service || 'All Services (Scheduled Sync)' }}
+            *Trigger:* ${{ github.event_name == 'schedule' && 'Weekly Cron Schedule' || 'Manual Trigger' }}
+            *Repository:* ${{ github.repository }}
 
   secret-scan:
     runs-on: ubuntu-latest
@@ -261,13 +265,18 @@ jobs:
       - name: Create and push manifest
         working-directory: ${{ runner.temp }}/digests
         run: |
+          # 1. Cleanly format the tags into a single space-separated line with -t flags
+          TAG_ARGUMENTS=$(echo "${{ steps.meta.outputs.tags }}" | tr '\n' ' ' | sed 's/ / -t /g' | sed 's/^/-t /' | sed 's/ -t $//')
+          
+          # 2. Build and push the GitHub Container Registry manifest
           docker buildx imagetools create \
-            $(echo "${{ steps.meta.outputs.tags }}" | sed 's/^/-t /') \
-            $(printf '${{ inputs.dockerhub_image }}@sha256:%s ' *)
-
-          docker buildx imagetools create \
-            $(echo "${{ steps.meta.outputs.tags }}" | sed 's/^/-t /') \
+            $TAG_ARGUMENTS \
             $(printf '${{ inputs.image }}@sha256:%s ' *)
+          
+          # 3. Build and push the Docker Hub manifest
+          docker buildx imagetools create \
+            $TAG_ARGUMENTS \
+            $(printf '${{ inputs.dockerhub_image }}@sha256:%s ' *)
 
       - name: Inspect
         run: docker buildx imagetools inspect ${{ inputs.image }}:${{ steps.get-version.outputs.version }}
@@ -306,23 +315,22 @@ jobs:
     name: Notify Telegram about build result
     runs-on: ubuntu-latest
     needs: [merge-manifests, scan-images]
-    if: always()
+    if: always() # Ensures notifications send even if previous steps fail
     steps:
-      - name: Checkout source code
-        uses: actions/checkout@v7
-        with:
-          repository: ${{ inputs.repo }}
-          token: ${{ secrets.PAT_TOKEN }}
-          ref: main
-          fetch-depth: 0
-          persist-credentials: false
-
       - name: Send Telegram message with result status
-        uses: proDreams/actions-telegram-notifier@main
+        uses: appleboy/telegram-action@master
         with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
-          thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
-          status: ${{ (needs.merge-manifests.result == 'success' && needs.scan-images.result == 'success') && 'success' || 'error' }}
-          notify_fields: 'repository,branch,commit,workflow'
-          title: ${{ (needs.merge-manifests.result == 'success' && needs.scan-images.result == 'success') && format('Build finished — {0}', inputs.display_name) || format('Build failed — {0}', inputs.display_name) }}
+          message_thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
+          format: markdown
+          message: |
+            ${{ (needs.merge-manifests.result == 'success' && needs.scan-images.result == 'success') && '✅ *Build Finished Successfully*' || '❌ *Build Failed*' }}
+            
+            *Service:* ${{ github.event.inputs.service || 'All Services (Scheduled Sync)' }}
+            *Trigger:* ${{ github.event_name == 'schedule' && 'Weekly Cron Schedule' || 'Manual Trigger' }}
+            *Repository:* ${{ github.repository }}
+            
+            *Pipeline Details:*
+            • Manifest Merge: `${{ needs.merge-manifests.result }}`
+            • Security Scan: `${{ needs.scan-images.result }}`
