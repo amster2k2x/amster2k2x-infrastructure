@@ -100,7 +100,7 @@ jobs:
         with:
           repository: ${{ inputs.repo }}
           token: ${{ secrets.PAT_TOKEN }}
-          fetch-depth: 0          # Gitleaks needs full history
+          fetch-depth: 1          # Optimized: Only scan the latest commit to save time
           persist-credentials: false
 
       - name: Create Gitleaks Config Allowlist
