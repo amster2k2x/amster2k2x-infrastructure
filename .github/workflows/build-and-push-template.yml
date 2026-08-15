@@ -189,8 +189,10 @@ jobs:
       - name: Export digest
         run: |
           mkdir -p "${{ runner.temp }}/digests"
-          digest="${{ steps.build.outputs.digest }}"
-          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+          # Safely extract all SHA256 hashes using grep
+          echo "${{ steps.build.outputs.digest }}" | grep -oE '[a-f0-9]{64}' | while read -r sha; do
+            touch "${{ runner.temp }}/digests/$sha"
+          done
 
       - name: Upload digest
         uses: actions/upload-artifact@v7
@@ -265,17 +267,20 @@ jobs:
       - name: Create and push manifest
         working-directory: ${{ runner.temp }}/digests
         run: |
-          # 1. Cleanly format the tags into a single space-separated line with -t flags
-          TAG_ARGUMENTS=$(echo "${{ steps.meta.outputs.tags }}" | tr '\n' ' ' | sed 's/ / -t /g' | sed 's/^/-t /' | sed 's/ -t $//')
+          # 1. Filter tags specifically for GHCR
+          GHCR_TAGS=$(echo "${{ steps.meta.outputs.tags }}" | grep "ghcr.io" | tr '\n' ' ' | sed 's/ / -t /g' | sed 's/^/-t /' | sed 's/ -t $//')
           
-          # 2. Build and push the GitHub Container Registry manifest
+          # 2. Filter tags specifically for Docker Hub
+          DH_TAGS=$(echo "${{ steps.meta.outputs.tags }}" | grep -v "ghcr.io" | tr '\n' ' ' | sed 's/ / -t /g' | sed 's/^/-t /' | sed 's/ -t $//')
+          
+          # 3. Create GHCR manifest
           docker buildx imagetools create \
-            $TAG_ARGUMENTS \
+            $GHCR_TAGS \
             $(printf '${{ inputs.image }}@sha256:%s ' *)
           
-          # 3. Build and push the Docker Hub manifest
+          # 4. Create Docker Hub manifest
           docker buildx imagetools create \
-            $TAG_ARGUMENTS \
+            $DH_TAGS \
             $(printf '${{ inputs.dockerhub_image }}@sha256:%s ' *)
 
       - name: Inspect

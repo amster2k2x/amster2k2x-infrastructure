@@ -22,14 +22,18 @@ jobs:
           persist-credentials: false
       
       - name: Send Telegram message with info status
-        uses: proDreams/actions-telegram-notifier@main
+        uses: appleboy/telegram-action@master
         with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
-          thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
-          status: info
-          notify_fields: 'repository,branch,commit,workflow'
-          title: 'Build started — remnawave frontend'
+          message_thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }} # Supports forum topics natively!
+          format: markdown
+          message: |
+            🚀 *Build Started* 🚀
+            
+            *Service:* ${{ github.event.inputs.service || 'All Services (Scheduled Sync)' }}
+            *Trigger:* ${{ github.event_name == 'schedule' && 'Weekly Cron Schedule' || 'Manual Trigger' }}
+            *Repository:* ${{ github.repository }}
 
   secret-scan:
     runs-on: ubuntu-latest
@@ -118,11 +122,19 @@ jobs:
           persist-credentials: false
 
       - name: Send Telegram message
-        uses: proDreams/actions-telegram-notifier@main
+        uses: appleboy/telegram-action@master
         with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          chat_id: ${{ secrets.TELEGRAM_CHAT_ID }}
-          thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
-          status: ${{ needs.build-frontend.result == 'success' || 'error' }}
-          notify_fields: 'repository,branch,commit,workflow'
-          title: ${{ needs.build-frontend.result == 'success' && 'Build finished — Remnawave Frontend' || 'Build failed — Remnawave Frontend' }}
+          message_thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
+          format: markdown
+          message: |
+            ${{ (needs.merge-manifests.result == 'success' && needs.scan-images.result == 'success') && '✅ *Build Finished Successfully*' || '❌ *Build Failed*' }}
+            
+            *Service:* ${{ github.event.inputs.service || 'All Services (Scheduled Sync)' }}
+            *Trigger:* ${{ github.event_name == 'schedule' && 'Weekly Cron Schedule' || 'Manual Trigger' }}
+            *Repository:* ${{ github.repository }}
+            
+            *Pipeline Details:*
+            • Manifest Merge: `${{ needs.merge-manifests.result }}`
+            • Security Scan: `${{ needs.scan-images.result }}`
