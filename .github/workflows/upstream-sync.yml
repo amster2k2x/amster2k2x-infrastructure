@@ -2,7 +2,7 @@ name: Upstream sync + build trigger
 
 on:
   schedule:
-    - cron: '05 17 * * 6'   # Saturday 07:05 UTC
+    - cron: '25 19 * * 6'   # Saturday 07:05 UTC
   workflow_dispatch:
     inputs:
       service:
@@ -174,7 +174,9 @@ jobs:
 
   trigger-bot-build:
     needs: sync-bot
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (needs.sync-bot.outputs.synced == 'true' || inputs.service == 'bot'))
+    if: |
+      needs.sync-bot.outputs.synced == 'true' || 
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.service == 'all' || github.event.inputs.service == 'bot'))
     permissions:
       contents: read
       packages: write
@@ -184,7 +186,9 @@ jobs:
 
   trigger-cabinet-build:
     needs: sync-cabinet
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (needs.sync-cabinet.outputs.synced == 'true' || inputs.service == 'cabinet'))
+    if: |
+      needs.sync-cabinet.outputs.synced == 'true' || 
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.service == 'all' || github.event.inputs.service == 'cabinet'))
     permissions:
       contents: read
       packages: write
@@ -194,7 +198,9 @@ jobs:
 
   trigger-subscription-page-build:
     needs: sync-subscription-page
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (needs.sync-subscription-page.outputs.synced == 'true' || inputs.service == 'subscription-page'))
+    if: |
+      needs.sync-subscription-page.outputs.synced == 'true' || 
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.service == 'all' || github.event.inputs.service == 'subscription-page'))
     permissions:
       contents: read
       packages: write
@@ -204,7 +210,9 @@ jobs:
 
   trigger-remnawave-backend-build:
     needs: sync-remnawave-backend
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (needs.sync-remnawave-backend.outputs.synced == 'true' || inputs.service == 'remnawave-backend'))
+    if: |
+      needs.sync-remnawave-backend.outputs.synced == 'true' || 
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.service == 'all' || github.event.inputs.service == 'remnawave-backend'))
     permissions:
       contents: read
       packages: write
@@ -214,7 +222,9 @@ jobs:
 
   trigger-remnawave-frontend-build:
     needs: sync-remnawave-frontend
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (needs.sync-remnawave-frontend.outputs.synced == 'true' || inputs.service == 'remnawave-frontend'))
+    if: |
+      needs.sync-remnawave-frontend.outputs.synced == 'true' || 
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.service == 'all' || github.event.inputs.service == 'remnawave-frontend'))
     permissions:
       contents: read
       packages: write
@@ -224,7 +234,9 @@ jobs:
 
   trigger-remnawave-node-build:
     needs: sync-remnawave-node
-    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && (needs.sync-remnawave-node.outputs.synced == 'true' || inputs.service == 'remnawave-node'))
+    if: |
+      needs.sync-remnawave-node.outputs.synced == 'true' || 
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.service == 'all' || github.event.inputs.service == 'remnawave-node'))
     permissions:
       contents: read
       packages: write
