@@ -30,10 +30,10 @@ jobs:
           format: markdown
           message: |
             🚀 *Build Started* 🚀
-            
-            *Service:* ${{ github.event.inputs.service || 'All Services (Scheduled Sync)' }}
-            *Trigger:* ${{ github.event_name == 'schedule' && 'Weekly Cron Schedule' || 'Manual Trigger' }}
-            *Repository:* ${{ github.repository }}
+
+            *Service:* ${{ inputs.display_name }}
+            *Trigger:* ${{ github.event_name }} by ${{ github.actor }}
+            *Repository:* ${{ inputs.repo }}
 
   secret-scan:
     runs-on: ubuntu-latest
@@ -131,10 +131,13 @@ jobs:
           message: |
             ${{ (needs.merge-manifests.result == 'success' && needs.scan-images.result == 'success') && '✅ *Build Finished Successfully*' || '❌ *Build Failed*' }}
             
-            *Service:* ${{ github.event.inputs.service || 'All Services (Scheduled Sync)' }}
-            *Trigger:* ${{ github.event_name == 'schedule' && 'Weekly Cron Schedule' || 'Manual Trigger' }}
-            *Repository:* ${{ github.repository }}
-            
+            *Service:* ${{ inputs.display_name }}
+            *Trigger:* ${{ github.event_name }}
+            *Repository:* ${{ inputs.repo }}
+
             *Pipeline Details:*
-            • Manifest Merge: `${{ needs.merge-manifests.result }}`
-            • Security Scan: `${{ needs.scan-images.result }}`
+            • Manifest Merge: ${{ needs.merge-manifests.result }}
+            • Security Scan: ${{ needs.scan-images.result }}
+            • Image build: ${{ needs.merge-manifests.result }}
+
+            🔗 [View Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})

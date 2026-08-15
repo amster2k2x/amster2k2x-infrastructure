@@ -263,6 +263,10 @@ jobs:
           tags: |
             type=raw,value=${{ steps.get-version.outputs.version }}
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+          labels: |
+            org.opencontainers.image.title=${{ inputs.display_name }}
+            org.opencontainers.image.source=https://github.com/${{ inputs.repo }}
+            org.opencontainers.image.url=https://github.com/${{ inputs.repo }}
 
       - name: Create and push manifest
         working-directory: ${{ runner.temp }}/digests
@@ -274,10 +278,12 @@ jobs:
           # 2. Build and push the GHCR manifest by validating the SHAs against GHCR first
           GHCR_DIGEST_ARGS=""
           for sha in *; do
-            if docker manifest inspect ghcr.io/${{ github.repository_owner }}/${{ inputs.display_name }}@sha256:$sha >/dev/null 2>&1; then
-              GHCR_DIGEST_ARGS="$GHCR_DIGEST_ARGS ghcr.io/${{ github.repository_owner }}/${{ inputs.display_name }}@sha256:$sha"
+            if docker manifest inspect ${{ inputs.image }}@sha256:$sha >/dev/null 2>&1; then
+              GHCR_DIGEST_ARGS="$GHCR_DIGEST_ARGS ${{ inputs.image }}@sha256:$sha"
             fi
           done
+
+          docker buildx imagetools create $GHCR_TAGS $GHCR_DIGEST_ARGS
           
           docker buildx imagetools create $GHCR_TAGS $GHCR_DIGEST_ARGS
           
@@ -349,4 +355,4 @@ jobs:
             • Security Scan: ${{ needs.scan-images.result }}
             • Image build: ${{ needs.merge-manifests.result }}
 
-            🔗 [View Workflow Run](https://github.com{{ github.repository }}/actions/runs/${{ github.run_id }})
+            🔗 [View Workflow Run](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
