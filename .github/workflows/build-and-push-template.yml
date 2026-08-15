@@ -141,6 +141,9 @@ jobs:
         run: |
           platform=${{ matrix.platform }}
           echo "PLATFORM_PAIR=${platform//\//-}" >> "$GITHUB_ENV"
+          # NEW — unique per service so parallel runs don't collide
+          slug=$(echo "${{ inputs.repo }}" | tr '/' '-')
+          echo "REPO_SLUG=$slug" >> "$GITHUB_ENV"
 
       - name: Checkout source code
         uses: actions/checkout@v7
@@ -197,7 +200,7 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@v7
         with:
-          name: digests-${{ env.PLATFORM_PAIR }}
+          name: digests-${{ env.REPO_SLUG }}-${{ env.PLATFORM_PAIR }}
           path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
           retention-days: 1
@@ -230,11 +233,14 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Set repo slug
+        run: echo "REPO_SLUG=$(echo '${{ inputs.repo }}' | tr '/' '-')" >> "$GITHUB_ENV"
+
       - name: Download digests
         uses: actions/download-artifact@v8
         with:
           path: ${{ runner.temp }}/digests
-          pattern: digests-*
+          pattern: digests-${{ env.REPO_SLUG }}-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
@@ -282,8 +288,6 @@ jobs:
               GHCR_DIGEST_ARGS="$GHCR_DIGEST_ARGS ${{ inputs.image }}@sha256:$sha"
             fi
           done
-
-          docker buildx imagetools create $GHCR_TAGS $GHCR_DIGEST_ARGS
           
           docker buildx imagetools create $GHCR_TAGS $GHCR_DIGEST_ARGS
           
