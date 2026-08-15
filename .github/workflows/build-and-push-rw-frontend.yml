@@ -31,9 +31,9 @@ jobs:
           message: |
             🚀 <b>Build Started</b> 🚀
 
-            <b>Service:</b> ${{ inputs.display_name }}
+            <b>Service:</b> Remnawave Frontend
             <b>Trigger:</b> ${{ github.event_name }} by ${{ github.actor }}
-            <b>Repository:</b> ${{ inputs.repo }}
+            <b>Repository:</b> ${{ github.repository }}
 
   secret-scan:
     runs-on: ubuntu-latest
@@ -109,7 +109,7 @@ jobs:
   notify-tg-result:
     name: Notify Telegram about build result
     runs-on: ubuntu-latest
-    needs: build-frontend
+    needs: [build-frontend, secret-scan]
     if: always()
     steps:
       - name: Checkout source code
@@ -129,15 +129,13 @@ jobs:
           message_thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
           format: html
           message: |
-            ${{ (needs.merge-manifests.result == 'success' && needs.scan-images.result == 'success') && '✅ <b>Build Finished Successfully</b>' || '❌ <b>Build Failed</b>' }}
+            ${{ (needs.build-frontend.result == 'success') && '✅ <b>Build Finished Successfully</b>' || '❌ <b>Build Failed</b>' }}
 
-            <b>Service:</b> ${{ inputs.display_name }}
+            <b>Service:</b> Remnawave Frontend
             <b>Trigger:</b> ${{ github.event_name }}
-            <b>Repository:</b> ${{ inputs.repo }}
+            <b>Repository:</b> ${{ github.repository }}
 
             <b>Pipeline Details:</b>
-            • Manifest Merge: ${{ needs.merge-manifests.result }}
-            • Security Scan: ${{ needs.scan-images.result }}
-            • Image build: ${{ needs.merge-manifests.result }}
+            • Security Scan: ${{ needs.secret-scan.result }}
 
-            🔗 <a href="https://github.com/${{ inputs.repo }}/actions/runs/${{ github.run_id }}">View Workflow Run</a>
+            🔗 <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">View Workflow Run</a>
