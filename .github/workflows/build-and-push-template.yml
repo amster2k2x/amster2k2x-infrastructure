@@ -89,10 +89,10 @@ jobs:
           format: markdown
           message: |
             🚀 *Build Started* 🚀
-            
-            *Service:* ${{ github.event.inputs.service || 'All Services (Scheduled Sync)' }}
-            *Trigger:* ${{ github.event_name == 'schedule' && 'Weekly Cron Schedule' || 'Manual Trigger' }}
-            *Repository:* ${{ github.repository }}
+
+            *Service:* ${{ inputs.display_name }}
+            *Trigger:* ${{ github.event_name }} by ${{ github.actor }}
+            *Repository:* ${{ inputs.repo }}
 
   secret-scan:
     runs-on: ubuntu-latest
@@ -267,21 +267,29 @@ jobs:
       - name: Create and push manifest
         working-directory: ${{ runner.temp }}/digests
         run: |
-          # 1. Filter tags specifically for GHCR
-          GHCR_TAGS=$(echo "${{ steps.meta.outputs.tags }}" | grep "ghcr.io" | tr '\n' ' ' | sed 's/ / -t /g' | sed 's/^/-t /' | sed 's/ -t $//')
+          # 1. Cleanly parse the target tags into single-line space-separated arguments
+          GHCR_TAGS=$(echo '${{ steps.meta.outputs.json }}' | jq -r '.tags[] | select(contains("ghcr.io")) | "-t " + .')
+          DH_TAGS=$(echo '${{ steps.meta.outputs.json }}' | jq -r '.tags[] | select(contains("ghcr.io") | not) | "-t " + .')
           
-          # 2. Filter tags specifically for Docker Hub
-          DH_TAGS=$(echo "${{ steps.meta.outputs.tags }}" | grep -v "ghcr.io" | tr '\n' ' ' | sed 's/ / -t /g' | sed 's/^/-t /' | sed 's/ -t $//')
+          # 2. Build and push the GHCR manifest by validating the SHAs against GHCR first
+          GHCR_DIGEST_ARGS=""
+          for sha in *; do
+            if docker manifest inspect ghcr.io/${{ github.repository_owner }}/${{ inputs.display_name }}@sha256:$sha >/dev/null 2>&1; then
+              GHCR_DIGEST_ARGS="$GHCR_DIGEST_ARGS ghcr.io/${{ github.repository_owner }}/${{ inputs.display_name }}@sha256:$sha"
+            fi
+          done
           
-          # 3. Create GHCR manifest
-          docker buildx imagetools create \
-            $GHCR_TAGS \
-            $(printf '${{ inputs.image }}@sha256:%s ' *)
+          docker buildx imagetools create $GHCR_TAGS $GHCR_DIGEST_ARGS
           
-          # 4. Create Docker Hub manifest
-          docker buildx imagetools create \
-            $DH_TAGS \
-            $(printf '${{ inputs.dockerhub_image }}@sha256:%s ' *)
+          # 3. Build and push the Docker Hub manifest by validating the SHAs against Docker Hub first
+          DH_DIGEST_ARGS=""
+          for sha in *; do
+            if docker manifest inspect ${{ inputs.dockerhub_image }}@sha256:$sha >/dev/null 2>&1; then
+              DH_DIGEST_ARGS="$DH_DIGEST_ARGS ${{ inputs.dockerhub_image }}@sha256:$sha"
+            fi
+          done
+          
+          docker buildx imagetools create $DH_TAGS $DH_DIGEST_ARGS
 
       - name: Inspect
         run: docker buildx imagetools inspect ${{ inputs.image }}:${{ steps.get-version.outputs.version }}
@@ -332,10 +340,13 @@ jobs:
           message: |
             ${{ (needs.merge-manifests.result == 'success' && needs.scan-images.result == 'success') && '✅ *Build Finished Successfully*' || '❌ *Build Failed*' }}
             
-            *Service:* ${{ github.event.inputs.service || 'All Services (Scheduled Sync)' }}
-            *Trigger:* ${{ github.event_name == 'schedule' && 'Weekly Cron Schedule' || 'Manual Trigger' }}
-            *Repository:* ${{ github.repository }}
-            
+            *Service:* ${{ inputs.display_name }}
+            *Trigger:* ${{ github.event_name }}
+            *Repository:* ${{ inputs.repo }}
+
             *Pipeline Details:*
-            • Manifest Merge: `${{ needs.merge-manifests.result }}`
-            • Security Scan: `${{ needs.scan-images.result }}`
+            • Manifest Merge: ${{ needs.merge-manifests.result }}
+            • Security Scan: ${{ needs.scan-images.result }}
+            • Image build: ${{ needs.merge-manifests.result }}
+
+            🔗 [View Workflow Run](https://github.com{{ github.repository }}/actions/runs/${{ github.run_id }})
