@@ -34,12 +34,12 @@ variable "bot_image" {
 
 variable "cabinet_image" {
   type    = string
-  default = "ghcr.io/amster2k2x/bedolaga-cabinet:latest"
+  default = "ghcr.io/amster2k2x/remnawave-bedolaga-cabinet:latest"
 }
 
 variable "subscription_page_image" {
   type    = string
-  default = "ghcr.io/amster2k2x/subscription-page:latest"
+  default = "ghcr.io/amster2k2x/remnawave-subscription-page:latest"
 }
 
 variable "node_image" {
