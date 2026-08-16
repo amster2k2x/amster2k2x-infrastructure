@@ -50,7 +50,7 @@ provider "aws" {
 data "aws_iam_policy_document" "hub_trust" {
   statement {
     effect  = "Allow"
-    actions = ["sts:AssumeRole"]
+    actions = ["sts:AssumeRole", "sts:TagSession"]
 
     principals {
       type        = "AWS"

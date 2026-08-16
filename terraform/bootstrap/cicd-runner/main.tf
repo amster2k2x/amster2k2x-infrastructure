@@ -100,7 +100,7 @@ resource "aws_iam_role" "hub" {
 data "aws_iam_policy_document" "assume_workload_roles" {
   statement {
     effect  = "Allow"
-    actions = ["sts:AssumeRole"]
+    actions = ["sts:AssumeRole", "sts:TagSession "]
     resources = [
       "arn:aws:iam::${var.test_account_id}:role/amster2k2x-test-deploy",
       # "arn:aws:iam::${var.prod_account_id}:role/amster2k2x-prod-deploy",  # add when prod-account exists
