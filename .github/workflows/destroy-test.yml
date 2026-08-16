@@ -47,10 +47,10 @@ jobs:
             -backend-config="region=${{ env.AWS_REGION }}" \
             -backend-config="dynamodb_table=${{ secrets.TF_LOCK_TABLE }}"
         env:
-          TF_VAR_workload_account_state_bucket: ${{ secrets.TF_STATE_BUCKET }}
+          TF_VAR_workload_account_state_bucket: ${{ secrets.TF_BOOTSTRAP_STATE_BUCKET }}
 
       - name: Terraform destroy
         run: terraform destroy -auto-approve
         env:
-          TF_VAR_workload_account_state_bucket: ${{ secrets.TF_STATE_BUCKET }}
+          TF_VAR_workload_account_state_bucket: ${{ secrets.TF_BOOTSTRAP_STATE_BUCKET }}
           # Image vars unused by destroy but required by variables.tf defaults - fine to omit

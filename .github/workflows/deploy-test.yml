@@ -85,12 +85,12 @@ jobs:
             -backend-config="region=${{ env.AWS_REGION }}" \
             -backend-config="dynamodb_table=${{ secrets.TF_LOCK_TABLE }}"
         env:
-          TF_VAR_workload_account_state_bucket: ${{ secrets.TF_STATE_BUCKET }}
+          TF_VAR_workload_account_state_bucket: ${{ secrets.TF_BOOTSTRAP_STATE_BUCKET }}
 
       - name: Terraform apply
         run: terraform apply -auto-approve
         env:
-          TF_VAR_workload_account_state_bucket: ${{ secrets.TF_STATE_BUCKET }}
+          TF_VAR_workload_account_state_bucket: ${{ secrets.TF_BOOTSTRAP_STATE_BUCKET }}
 
       - name: Update Dynu DNS — point test.samnpv.mywire.org at the new ALB
         run: |
@@ -183,4 +183,4 @@ jobs:
         if: always() && inputs.auto_destroy
         run: terraform destroy -auto-approve
         env:
-          TF_VAR_workload_account_state_bucket: ${{ secrets.TF_STATE_BUCKET }}
+          TF_VAR_workload_account_state_bucket: ${{ secrets.TF_BOOTSTRAP_STATE_BUCKET }}
