@@ -47,6 +47,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Debug OIDC token claims
+        run: |
+          TOKEN=$(curl -sf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r '.value')
+          echo "$TOKEN" | cut -d. -f2 | base64 -d 2>/dev/null | jq '{sub, aud}'
+
       # Hop 1: GitHub OIDC -> hub role, in cicd-runner-account.
       # This role can do nothing except assume the next role.
       - name: Assume cicd-runner hub role
