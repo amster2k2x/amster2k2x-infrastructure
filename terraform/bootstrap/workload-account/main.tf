@@ -115,6 +115,32 @@ resource "aws_iam_role_policy" "deploy_permissions" {
         Resource = "*"
       },
       {
+        Sid    = "CreateAwsServiceLinkedRoles"
+        Effect = "Allow"
+        Action = ["iam:CreateServiceLinkedRole"]
+        Resource = "arn:aws:iam::*:role/aws-service-role/*"
+        Condition = {
+          StringEquals = {
+            "iam:AWSServiceName" = [
+              "elasticloadbalancing.amazonaws.com",
+              "ecs.amazonaws.com"
+            ]
+          }
+        }
+      },
+      {
+        Sid      = "ManageACM"
+        Effect   = "Allow"
+        Action   = ["acm:RequestCertificate", "acm:DescribeCertificate", "acm:DeleteCertificate"]
+        Resource = "*"
+      },
+      {
+        Sid      = "ManageSecrets"
+        Effect   = "Allow"
+        Action   = ["secretsmanager:*", "ssm:*"]
+        Resource = "*"
+      },
+      {
         Sid      = "ReadGoldenBackups"
         Effect   = "Allow"
         Action   = ["s3:GetObject", "s3:ListBucket"]
