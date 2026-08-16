@@ -45,12 +45,12 @@ jobs:
       run:
         working-directory: build
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Hop 1: GitHub OIDC -> hub role, in cicd-runner-account.
       # This role can do nothing except assume the next role.
       - name: Assume cicd-runner hub role
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_HUB_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -60,14 +60,14 @@ jobs:
       # Calling configure-aws-credentials again chains onto the hop-1
       # credentials automatically — no static keys anywhere in this flow.
       - name: Assume test-account deploy role
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: gha-test-deploy
           role-chaining: true
 
-      - uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v4
 
       - name: Terraform init
         run: |
