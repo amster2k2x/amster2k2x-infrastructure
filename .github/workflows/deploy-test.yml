@@ -43,7 +43,7 @@ jobs:
     environment: test   # <- GitHub Environment "test", set up manually per BOOTSTRAP.md
     defaults:
       run:
-        working-directory: build
+        working-directory: terraform/build
     steps:
       - uses: actions/checkout@v7
 
