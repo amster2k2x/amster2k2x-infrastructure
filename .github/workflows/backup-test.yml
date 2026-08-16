@@ -39,6 +39,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: gha-test-deploy
           role-chaining: true
+          role-skip-session-tagging: true
 
       - name: Install Session Manager plugin
         run: |
