@@ -1,0 +1,95 @@
+name: Test environment - capture golden backup
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Which service to back up'
+        required: true
+        type: choice
+        options:
+          - panel
+          - bot
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: eu-north-1
+  CLUSTER: amster2k2x-test
+  BUCKET_ENV: test
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    environment: test
+    steps:
+      - name: Assume cicd-runner hub role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_HUB_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-hub
+
+      - name: Assume test-account deploy role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-test-deploy
+          role-chaining: true
+
+      - name: Install Session Manager plugin
+        run: |
+          curl -sSO "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb"
+          sudo dpkg -i session-manager-plugin.deb
+          session-manager-plugin --version
+
+      - name: Find running task
+        id: task
+        run: |
+          TASK_ARN=$(aws ecs list-tasks \
+            --cluster "$CLUSTER" \
+            --service-name "${{ inputs.service }}" \
+            --region "$AWS_REGION" \
+            --query 'taskArns[0]' \
+            --output text)
+
+          if [ "$TASK_ARN" = "None" ] || [ -z "$TASK_ARN" ]; then
+            echo "::error::No running task found for service '${{ inputs.service }}'. Is the test environment up?"
+            exit 1
+          fi
+
+          echo "arn=$TASK_ARN" >> $GITHUB_OUTPUT
+
+      - name: Dump postgres and upload to S3
+        run: |
+          SVC="${{ inputs.service }}"
+          TASK="${{ steps.task.outputs.arn }}"
+          BUCKET="amster2k2x-${BUCKET_ENV}-golden-backups"
+
+          echo "Step 1/2 — pg_dump inside postgres container..."
+          aws ecs execute-command \
+            --cluster "$CLUSTER" \
+            --task "$TASK" \
+            --container postgres \
+            --region "$AWS_REGION" \
+            --interactive \
+            --command "sh -c 'pg_dump --format=plain --clean --if-exists -U $SVC -d $SVC -f /tmp/$SVC.dump && echo DUMP_COMPLETE'"
+
+          echo "Step 2/2 — upload dump to S3..."
+          aws ecs execute-command \
+            --cluster "$CLUSTER" \
+            --task "$TASK" \
+            --container postgres \
+            --region "$AWS_REGION" \
+            --interactive \
+            --command "sh -c 'apk add --no-cache aws-cli --quiet && aws s3 cp /tmp/$SVC.dump s3://$BUCKET/$SVC/latest.dump --region $AWS_REGION && echo UPLOAD_COMPLETE'"
+
+      - name: Verify upload
+        run: |
+          SVC="${{ inputs.service }}"
+          BUCKET="amster2k2x-${BUCKET_ENV}-golden-backups"
+          aws s3 ls "s3://$BUCKET/$SVC/latest.dump"
+          echo "::notice::Golden backup for $SVC saved to s3://$BUCKET/$SVC/latest.dump"

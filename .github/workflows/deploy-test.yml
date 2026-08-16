@@ -1,0 +1,178 @@
+name: Test environment - deploy, test, teardown
+
+on:
+  workflow_dispatch:
+    inputs:
+      panel_backend_image:
+        required: true
+        type: string
+      bot_image:
+        required: true
+        type: string
+      cabinet_image:
+        required: true
+        type: string
+      subscription_page_image:
+        required: true
+        type: string
+      node_image:
+        required: true
+        type: string
+      auto_destroy:
+        description: 'Destroy after smoke tests. Set false to leave it running for manual poking — tear down with destroy-test.yml when done.'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: eu-north-1
+  TF_VAR_environment: test
+  TF_VAR_panel_backend_image: ${{ inputs.panel_backend_image }}
+  TF_VAR_bot_image: ${{ inputs.bot_image }}
+  TF_VAR_cabinet_image: ${{ inputs.cabinet_image }}
+  TF_VAR_subscription_page_image: ${{ inputs.subscription_page_image }}
+  TF_VAR_node_image: ${{ inputs.node_image }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: test   # <- GitHub Environment "test", set up manually per BOOTSTRAP.md
+    defaults:
+      run:
+        working-directory: build
+    steps:
+      - uses: actions/checkout@v4
+
+      # Hop 1: GitHub OIDC -> hub role, in cicd-runner-account.
+      # This role can do nothing except assume the next role.
+      - name: Assume cicd-runner hub role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_HUB_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-hub
+
+      # Hop 2: hub role -> cross-account deploy role, in test-account.
+      # Calling configure-aws-credentials again chains onto the hop-1
+      # credentials automatically — no static keys anywhere in this flow.
+      - name: Assume test-account deploy role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-test-deploy
+          role-chaining: true
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="key=build/test/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ secrets.TF_LOCK_TABLE }}"
+        env:
+          TF_VAR_workload_account_state_bucket: ${{ secrets.TF_STATE_BUCKET }}
+
+      - name: Terraform apply
+        run: terraform apply -auto-approve
+        env:
+          TF_VAR_workload_account_state_bucket: ${{ secrets.TF_STATE_BUCKET }}
+
+      - name: Update Dynu DNS — point test.samnpv.mywire.org at the new ALB
+        run: |
+          ALB_DNS=$(terraform output -raw alb_dns_name)
+          echo "Pointing test.samnpv.mywire.org → $ALB_DNS"
+
+          DOMAIN_ID=$(curl -sf "https://api.dynu.com/v2/dns" \
+            -H "API-Key: ${{ secrets.DYNU_API_KEY }}" \
+            -H "Accept: application/json" \
+            | python3 -c "
+          import sys, json
+          domains = json.load(sys.stdin).get('domains', [])
+          d = next((d for d in domains if d['name'] == 'samnpv.mywire.org'), None)
+          print(d['id'] if d else '', end='')
+          ")
+
+          if [ -z "$DOMAIN_ID" ]; then
+            echo "::error::Could not find samnpv.mywire.org in Dynu."
+            exit 1
+          fi
+
+          RECORD_ID=$(curl -sf "https://api.dynu.com/v2/dns/${DOMAIN_ID}/record?recordType=CNAME" \
+            -H "API-Key: ${{ secrets.DYNU_API_KEY }}" \
+            -H "Accept: application/json" \
+            | python3 -c "
+          import sys, json
+          records = json.load(sys.stdin).get('dnsRecords', [])
+          r = next((r for r in records if r.get('nodeName') == 'test'), None)
+          print(r['id'] if r else '', end='')
+          ")
+
+          if [ -n "$RECORD_ID" ]; then
+            curl -sf -X DELETE "https://api.dynu.com/v2/dns/${DOMAIN_ID}/record/${RECORD_ID}" \
+              -H "API-Key: ${{ secrets.DYNU_API_KEY }}" > /dev/null
+          fi
+
+          curl -sf -X POST "https://api.dynu.com/v2/dns/${DOMAIN_ID}/record" \
+            -H "API-Key: ${{ secrets.DYNU_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json" \
+            -d "{
+              \"nodeName\": \"test\",
+              \"recordType\": \"CNAME\",
+              \"ttl\": 60,
+              \"alias\": \"${ALB_DNS}.\"
+            }"
+
+          echo "Waiting 60s for DNS propagation..."
+          sleep 60
+
+      - name: Wait for ECS services to be stable
+        run: |
+          for svc in panel bot subscription node; do
+            echo "Waiting for $svc..."
+            aws ecs wait services-stable \
+              --cluster amster2k2x-test \
+              --services "$svc" \
+              --region "${{ env.AWS_REGION }}"
+          done
+
+      - name: Smoke tests
+        run: |
+          HOST=$(terraform output -raw hostname)
+          curl -sf "https://$HOST:8081/health"
+          curl -sf "https://$HOST/"
+          curl -sf "https://$HOST:8082/"
+          curl -sf "https://$HOST:8081/api/nodes" | grep -q '"connected":true'
+
+      - name: Register test bot webhook
+        if: success()
+        run: |
+          HOST=$(terraform output -raw hostname)
+          curl -sf "https://api.telegram.org/bot${{ secrets.TEST_TELEGRAM_BOT_TOKEN }}/setWebhook" \
+            -d "url=https://$HOST/api/webhook"
+
+      - name: Print environment URLs
+        if: ${{ inputs.auto_destroy == false }}
+        run: |
+          HOST=$(terraform output -raw hostname)
+          echo "### Test environment is running" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | URL |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-----|" >> $GITHUB_STEP_SUMMARY
+          echo "| Cabinet | https://$HOST |" >> $GITHUB_STEP_SUMMARY
+          echo "| Panel   | https://$HOST:8081 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Sub page| https://$HOST:8082 |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Run **destroy-test.yml** when done." >> $GITHUB_STEP_SUMMARY
+
+      - name: Terraform destroy
+        if: always() && inputs.auto_destroy
+        run: terraform destroy -auto-approve
+        env:
+          TF_VAR_workload_account_state_bucket: ${{ secrets.TF_STATE_BUCKET }}
