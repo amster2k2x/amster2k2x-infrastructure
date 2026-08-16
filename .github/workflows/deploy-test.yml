@@ -92,10 +92,10 @@ jobs:
         env:
           TF_VAR_workload_account_state_bucket: ${{ secrets.TF_BOOTSTRAP_STATE_BUCKET }}
 
-      - name: Update Dynu DNS — point test.samnpv.mywire.org at the new ALB
+      - name: Update Dynu DNS — point test.amster2k2x.mywire.org at the new ALB
         run: |
           ALB_DNS=$(terraform output -raw alb_dns_name)
-          echo "Pointing test.samnpv.mywire.org → $ALB_DNS"
+          echo "Pointing test.amster2k2x.mywire.org → $ALB_DNS"
 
           DOMAIN_ID=$(curl -sf "https://api.dynu.com/v2/dns" \
             -H "API-Key: ${{ secrets.DYNU_API_KEY }}" \
@@ -103,12 +103,12 @@ jobs:
             | python3 -c "
           import sys, json
           domains = json.load(sys.stdin).get('domains', [])
-          d = next((d for d in domains if d['name'] == 'samnpv.mywire.org'), None)
+          d = next((d for d in domains if d['name'] == 'amster2k2x.mywire.org'), None)
           print(d['id'] if d else '', end='')
           ")
 
           if [ -z "$DOMAIN_ID" ]; then
-            echo "::error::Could not find samnpv.mywire.org in Dynu."
+            echo "::error::Could not find amster2k2x.mywire.org in Dynu."
             exit 1
           fi
 
