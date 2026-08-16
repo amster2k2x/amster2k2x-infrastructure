@@ -427,3 +427,12 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+.github/agents/
+.github/instructions
+.docs/
+
+# Terraform files
+*.tfstate
+*.tfstate.backup
+.terraform/
