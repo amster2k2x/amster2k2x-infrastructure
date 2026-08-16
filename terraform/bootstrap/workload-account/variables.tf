@@ -19,3 +19,7 @@ variable "base_domain" {
   type    = string
   default = "amster2k2x.mywire.org"
 }
+variable "bootstrap_state_bucket_name" {
+  type        = string
+  description = "The bucket created by hand in step 0b."
+}
