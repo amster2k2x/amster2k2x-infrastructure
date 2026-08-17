@@ -60,6 +60,9 @@ resource "aws_ecs_task_definition" "bot" {
         { name = "PGDATABASE", value = "bot" }
       ]
       command = ["/restore.sh"]
+      repositoryCredentials = {
+        credentialsParameter = data.terraform_remote_state.workload_account.outputs.ghcr_pull_secret_arn
+      }
       logConfiguration = {
         logDriver = "awslogs"
         options = {
