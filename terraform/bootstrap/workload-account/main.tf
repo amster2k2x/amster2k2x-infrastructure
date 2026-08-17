@@ -281,3 +281,10 @@ resource "aws_ssm_parameter" "bot_web_api_token" {
   value = "REPLACE_ME_MANUALLY"
   lifecycle { ignore_changes = [value] }
 }
+
+resource "aws_ssm_parameter" "telegram_oidc_client_secret" {
+  name  = "/amster2k2x/${var.environment}/telegram_oidc_client_secret"
+  type  = "SecureString"
+  value = "REPLACE_ME_MANUALLY"
+  lifecycle { ignore_changes = [value] }
+}
