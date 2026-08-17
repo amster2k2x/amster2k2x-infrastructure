@@ -112,7 +112,7 @@ jobs:
             exit 1
           fi
 
-          RECORD_ID=$(curl -sf "https://api.dynu.com/v2/dns/${DOMAIN_ID}/record?recordType=CNAME" \
+          RECORD_ID=$(curl -sf "https://api.dynu.com/v2/dns/${DOMAIN_ID}/record" \
             -H "API-Key: ${{ secrets.DYNU_API_KEY }}" \
             -H "Accept: application/json" \
             | python3 -c "
@@ -132,10 +132,12 @@ jobs:
             -H "Content-Type: application/json" \
             -H "Accept: application/json" \
             -d "{
-              \"nodeName\": \"test\",
-              \"recordType\": \"CNAME\",
-              \"ttl\": 60,
-              \"alias\": \"${ALB_DNS}.\"
+              \"nodeName\": \"test\", 
+              \"recordType\": \"CNAME\", 
+              \"ttl\": 120, 
+              \"state\": true, 
+              \"hostName\": \"test.amster2k2x.mywire.org\", 
+              \"host\": \"${ALB_DNS}\"
             }"
 
           echo "Waiting 60s for DNS propagation..."
