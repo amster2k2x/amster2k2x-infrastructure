@@ -129,8 +129,8 @@ resource "aws_ecs_task_definition" "bot" {
         # this as X-API-Key; ALB target-group health checks can't send
         # custom headers, so see the note in outputs.tf / README re: this
         # target group possibly needing an unauthenticated health path instead.
-        { name = "WEB_API_DEFAULT_TOKEN", valueFrom = data.terraform_remote_state.workload_account.outputs.bot_web_api_token_param_arn },
-        { name = "TELEGRAM_OIDC_CLIENT_SECRET", valueFrom = data.terraform_remote_state.workload_account.outputs.telegram_oidc_client_secret_param_arn }
+        { name = "WEB_API_DEFAULT_TOKEN", valueFrom = data.terraform_remote_state.workload_account.outputs.bot_web_api_token_param_arn }
+        # { name = "TELEGRAM_OIDC_CLIENT_SECRET", valueFrom = data.terraform_remote_state.workload_account.outputs.telegram_oidc_client_secret_param_arn }
       ]
       healthCheck = {
         command = [
