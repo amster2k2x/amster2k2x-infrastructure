@@ -90,6 +90,10 @@ resource "aws_ecs_task_definition" "bot" {
       # go through this one port per your .env.example comment.
       portMappings = [{ name = "bot", containerPort = var.bot_web_port, protocol = "tcp" }]
       environment = [
+        { name = "ADMIN_IDS", value = "59155651"},
+        { name = "BOT_RUN_MODE", value = "webhook"},
+        { name = "DEBUG", value = "true"},
+        { name = "BOT_USERNAME", value = "amster2k2x_test_bot"},
         { name = "DATABASE_MODE", value = "postgresql" },
         { name = "POSTGRES_HOST", value = "localhost" },
         { name = "POSTGRES_PORT", value = "5432" },
@@ -99,11 +103,24 @@ resource "aws_ecs_task_definition" "bot" {
         { name = "REDIS_URL", value = "redis://localhost:6379/0" },
         # Reaches panel over Service Connect, not through the public ALB.
         # Service Connect resolves "panel" within the namespace — no external ALB hairpin needed
-        { name = "REMNAWAVE_API_URL", value = "http://panel:${var.panel_backend_port}" },
+        { name = "REMNAWAVE_API_URL", value = "http://panel" },
         { name = "REMNAWAVE_AUTH_TYPE", value = "api_key" },
         { name = "CABINET_ENABLED", value = "true" },
         { name = "CABINET_URL", value = "https://${data.terraform_remote_state.workload_account.outputs.hostname}" },
-        { name = "CABINET_ALLOWED_ORIGINS", value = "https://${data.terraform_remote_state.workload_account.outputs.hostname}" }
+        { name = "CABINET_ALLOWED_ORIGINS", value = "https://${data.terraform_remote_state.workload_account.outputs.hostname}" },
+        { name = "CABINET_ACCESS_TOKEN_EXPIRE_MINUTES", value = "60"},
+        { name = "CABINET_REFRESH_TOKEN_EXPIRE_DAYS", value = "30"},
+        { name = "CABINET_EMAIL_VERIFICATION_ENABLED", value = "true"},
+        { name = "TELEGRAM_WIDGET_SIZE", value = "medium"},
+        { name = "TELEGRAM_WIDGET_RADIUS", value = "8"},
+        { name = "TELEGRAM_WIDGET_USERPIC", value = "true"},
+        { name = "TELEGRAM_WIDGET_REQUEST_ACCESS", value = "true"},
+        { name = "TELEGRAM_OIDC_ENABLED", value = "true"},
+        { name = "TELEGRAM_OIDC_CLIENT_ID", value = "8029977831"},
+        { name = "BACKUP_AUTO_ENABLED", value = "false"},
+        { name = "WEB_API_ENABLED", value = "true"},
+        { name = "WEB_API_HOST", value = "0.0.0.0"},
+        { name = "WEB_API_PORT", value = "8080"}
       ]
       secrets = [
         { name = "BOT_TOKEN", valueFrom = data.terraform_remote_state.workload_account.outputs.bot_token_param_arn },
@@ -112,7 +129,8 @@ resource "aws_ecs_task_definition" "bot" {
         # this as X-API-Key; ALB target-group health checks can't send
         # custom headers, so see the note in outputs.tf / README re: this
         # target group possibly needing an unauthenticated health path instead.
-        { name = "WEB_API_DEFAULT_TOKEN", valueFrom = data.terraform_remote_state.workload_account.outputs.bot_web_api_token_param_arn }
+        { name = "WEB_API_DEFAULT_TOKEN", valueFrom = data.terraform_remote_state.workload_account.outputs.bot_web_api_token_param_arn },
+        { name = "TELEGRAM_OIDC_CLIENT_SECRET", valueFrom = data.terraform_remote_state.workload_account.outputs.telegram_oidc_client-secret_param_arn }
       ]
       healthCheck = {
         command = [

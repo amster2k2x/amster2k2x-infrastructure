@@ -23,6 +23,8 @@ resource "aws_ecs_task_definition" "subscription" {
         # Reaches panel over Service Connect, not through the public ALB.
         # Reaches panel via Service Connect (internal, no HTTPS needed within VPC)
         { name = "REMNAWAVE_PANEL_URL", value = "http://panel:${var.panel_backend_port}" },
+        { name = "META_TITLE", value = "Amster2k2x Subscription Test" },
+        { name = "META_DESCRIPTION", value = "Amster2k2x Test subscription page" },
         { name = "TRUST_PROXY", value = "1" }, # behind the ALB
         { name = "CUSTOM_SUB_PREFIX", value = "" } # owns root of its own listener port, no prefix needed
       ]

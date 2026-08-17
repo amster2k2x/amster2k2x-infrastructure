@@ -56,7 +56,7 @@ variable "restore_helper_image" {
 # --- App-specific config you'll want to fill in once you share the compose files ---
 variable "node_service_port" {
   type        = number
-  description = "TODO confirm: port remnawave-node listens on for panel management traffic"
+  description = "Port remnawave-node listens on for panel management traffic"
   default     = 2222
 }
 
