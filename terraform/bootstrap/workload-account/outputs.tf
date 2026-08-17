@@ -43,7 +43,7 @@ output "bot_web_api_token_param_arn" {
   value = aws_ssm_parameter.bot_web_api_token.arn
 }
 
-output "telegram_oidc_client_secret" {
+output "telegram_oidc_client_secret_arn" {
   value = aws_ssm_parameter.telegram_oidc_client_secret.arn
 }
 
