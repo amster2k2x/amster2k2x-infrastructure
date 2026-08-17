@@ -100,12 +100,7 @@ jobs:
           DOMAIN_ID=$(curl -sf "https://api.dynu.com/v2/dns" \
             -H "API-Key: ${{ secrets.DYNU_API_KEY }}" \
             -H "Accept: application/json" \
-            | python3 -c "
-          import sys, json
-          domains = json.load(sys.stdin).get('domains', [])
-          d = next((d for d in domains if d['name'] == 'amster2k2x.mywire.org'), None)
-          print(d['id'] if d else '', end='')
-          ")
+            | jq -r '([.domains[]? | select(.name == "amster2k2x.mywire.org")][0].id) // empty')
 
           if [ -z "$DOMAIN_ID" ]; then
             echo "::error::Could not find amster2k2x.mywire.org in Dynu."
@@ -115,12 +110,7 @@ jobs:
           RECORD_ID=$(curl -sf "https://api.dynu.com/v2/dns/${DOMAIN_ID}/record" \
             -H "API-Key: ${{ secrets.DYNU_API_KEY }}" \
             -H "Accept: application/json" \
-            | python3 -c "
-          import sys, json
-          records = json.load(sys.stdin).get('dnsRecords', [])
-          r = next((r for r in records if r.get('nodeName') == 'test'), None)
-          print(r['id'] if r else '', end='')
-          ")
+            | jq -r '([.dnsRecords[]? | select(.nodeName == "test")][0].id) // empty')
 
           if [ -n "$RECORD_ID" ]; then
             curl -sf -X DELETE "https://api.dynu.com/v2/dns/${DOMAIN_ID}/record/${RECORD_ID}" \
