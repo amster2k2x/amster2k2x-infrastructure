@@ -2,10 +2,16 @@ resource "aws_ecs_task_definition" "panel" {
   family                   = "amster2k2x-${var.environment}-panel"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "512"
-  memory                   = "1024"
+  cpu                      = "1024"
+  memory                   = "2048"
   execution_role_arn       = aws_iam_role.execution.arn
   task_role_arn            = aws_iam_role.task_with_restore.arn
+
+  # Explicitly configure Fargate to run on ARM64
+  runtime_platform {
+    operating_system_family = "LINUX"
+    cpu_architecture        = "ARM64"
+  }
 
   container_definitions = jsonencode([
     {
