@@ -145,7 +145,7 @@ resource "aws_iam_role_policy" "deploy_permissions" {
       {
         Sid      = "ReadGoldenBackups"
         Effect   = "Allow"
-        Action   = ["s3:GetObject", "s3:ListBucket"]
+        Action   = ["s3:GetObject", "s3:ListBucket", "s3:PutObject"]
         Resource = [aws_s3_bucket.golden_backups.arn, "${aws_s3_bucket.golden_backups.arn}/*"]
       },
       {
