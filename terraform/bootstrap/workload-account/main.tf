@@ -111,7 +111,8 @@ resource "aws_iam_role_policy" "deploy_permissions" {
           "iam:PassRole", "iam:CreateRole", "iam:DeleteRole", "iam:AttachRolePolicy",
           "iam:DetachRolePolicy", "iam:PutRolePolicy", "iam:DeleteRolePolicy",
           "iam:GetRole", "iam:TagRole", "iam:ListRolePolicies", "iam:ListAttachedRolePolicies",
-          "iam:GetRolePolicy"
+          "iam:GetRolePolicy",
+          "iam:ListInstanceProfilesForRole"
         ]
         Resource = "*"
       },
