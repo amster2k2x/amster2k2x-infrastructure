@@ -26,7 +26,7 @@ resource "aws_ecs_task_definition" "node" {
       environment = [
         # TODO: whatever remnawave-node needs besides the secret key — panel
         # callback URL etc, once you share the real env var names
-        { name = "NODE_PORT", value = "5061" }
+        { name = "NODE_PORT", value = "${var.node_service_port}" }
       ]
       secrets = [
         { name = "NODE_SECRET_KEY", valueFrom = data.terraform_remote_state.workload_account.outputs.node_secret_key_param_arn }
