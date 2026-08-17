@@ -26,14 +26,14 @@ jobs:
     environment: test
     steps:
       - name: Assume cicd-runner hub role
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_HUB_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: gha-hub
 
       - name: Assume test-account deploy role
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -78,6 +78,7 @@ jobs:
             --region "$AWS_REGION" \
             --interactive \
             --command "pg_dump --format=plain --clean --if-exists -U $SVC -d $SVC" \
+            | grep -vE '^(Starting session with SessionId|Exiting session with sessionId)' \
             | aws s3 cp - "s3://$BUCKET/$SVC/latest.dump" --region "$AWS_REGION"
 
       - name: Verify upload
