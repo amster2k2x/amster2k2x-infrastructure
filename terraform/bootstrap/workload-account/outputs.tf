@@ -43,6 +43,10 @@ output "bot_web_api_token_param_arn" {
   value = aws_ssm_parameter.bot_web_api_token.arn
 }
 
+output "telegram_oidc_client_secret" {
+  value = aws_ssm_parameter.telegram_oidc_client_secret.arn
+}
+
 output "ssm_parameter_path_prefix_arn" {
   value       = "arn:aws:ssm:${var.aws_region}:*:parameter/amster2k2x/${var.environment}/*"
   description = "Wildcard ARN covering all SSM params for this environment — used by build/'s execution-role policy."
