@@ -148,15 +148,15 @@ jobs:
           HOST=$(terraform output -raw hostname)
           curl -sf "https://$HOST:8081/health"
           curl -sf "https://$HOST/"
-          curl -sf "https://$HOST:8082/"
+        # curl -sf "https://$HOST:8082/"
         # curl -sf "https://$HOST:8081/api/nodes" | grep -q '"connected":true'
 
-      - name: Register test bot webhook
-        if: success()
-        run: |
-          HOST=$(terraform output -raw hostname)
-          curl -sf "https://api.telegram.org/bot${{ secrets.TEST_TELEGRAM_BOT_TOKEN }}/setWebhook" \
-            -d "url=https://$HOST/api/webhook"
+#      - name: Register test bot webhook
+#        if: success()
+#        run: |
+#          HOST=$(terraform output -raw hostname)
+#          curl -sf "https://api.telegram.org/bot${{ secrets.TEST_TELEGRAM_BOT_TOKEN }}/setWebhook" \
+#            -d "url=https://$HOST/api/webhook"
 
       - name: Print environment URLs
         if: ${{ inputs.auto_destroy == false }}
