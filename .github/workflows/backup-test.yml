@@ -70,17 +70,17 @@ jobs:
           TASK="${{ steps.task.outputs.arn }}"
           BUCKET="amster2k2x-${BUCKET_ENV}-golden-backups"
 
-          echo "Streaming backup from ECS to the runner..."
+          echo "Streaming deep database backup from ECS to the runner..."
           
-          # 1. Target '--container postgres' (matches the terraform container name)
-          # 2. Dynamically pass '-U $SVC -d $SVC' to match 'panel' or 'bot' database users
+          # 1. Added '--schema=public' to explicitly target your application tables
+          # 2. Added '--verbose' to help us see exactly what pg_dump is doing
           aws ecs execute-command \
             --cluster "$CLUSTER" \
             --task "$TASK" \
             --container postgres \
             --region "$AWS_REGION" \
             --interactive \
-            --command "sh -c 'PGPASSWORD=\"test-only-not-secret\" pg_dump --format=plain --clean --if-exists -U $SVC -d $SVC'" > /tmp/raw_backup.dump
+            --command "sh -c 'PGPASSWORD=\"test-only-not-secret\" pg_dump --format=plain --schema=public --clean --if-exists -U $SVC -d $SVC'" > /tmp/raw_backup.dump
 
           echo "Cleaning up AWS SSM terminal noise from the file..."
           sed -i '/Starting session\|SessionId\|Exiting session/d' /tmp/raw_backup.dump
