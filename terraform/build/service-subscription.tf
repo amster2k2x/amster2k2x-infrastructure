@@ -82,5 +82,10 @@ resource "aws_ecs_service" "subscription" {
     container_port   = var.subscription_page_port
   }
 
+  service_connect_configuration {
+    enabled   = true
+    namespace = aws_service_discovery_http_namespace.main.arn
+  }
+
   depends_on = [aws_lb_listener.subscription_https]
 }

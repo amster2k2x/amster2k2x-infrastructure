@@ -29,7 +29,7 @@ resource "aws_ecs_task_definition" "node" {
         { name = "NODE_PORT", value = tostring(var.node_service_port) }
       ]
       secrets = [
-        { name = "NODE_SECRET_KEY", valueFrom = data.terraform_remote_state.workload_account.outputs.node_secret_key_param_arn }
+        { name = "SECRET_KEY", valueFrom = data.terraform_remote_state.workload_account.outputs.node_secret_key_param_arn }
       ]
       repositoryCredentials = {
         credentialsParameter = data.terraform_remote_state.workload_account.outputs.ghcr_pull_secret_arn
