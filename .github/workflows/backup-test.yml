@@ -72,20 +72,17 @@ jobs:
 
           echo "Streaming backup from ECS to the runner..."
           
-          # We run pg_dump directly. 
-          # The > operator saves the output to a file on the GitHub runner.
-          # We pass the password via PGPASSWORD so it runs completely non-interactively.
+          # 1. Target '--container postgres' (matches the terraform container name)
+          # 2. Dynamically pass '-U $SVC -d $SVC' to match 'panel' or 'bot' database users
           aws ecs execute-command \
             --cluster "$CLUSTER" \
             --task "$TASK" \
             --container postgres \
             --region "$AWS_REGION" \
             --interactive \
-            --command "sh -c 'PGPASSWORD=\"test-only-not-secret\" pg_dump --format=plain --clean --if-exists -U panel -d panel'" > /tmp/raw_backup.dump
+            --command "sh -c 'PGPASSWORD=\"test-only-not-secret\" pg_dump --format=plain --clean --if-exists -U $SVC -d $SVC'" > /tmp/raw_backup.dump
 
           echo "Cleaning up AWS SSM terminal noise from the file..."
-          # AWS execute-command inserts session headers into stdout. 
-          # This line deletes the text headers so your SQL code stays uncorrupted.
           sed -i '/Starting session\|SessionId\|Exiting session/d' /tmp/raw_backup.dump
 
           echo "Uploading clean file to S3..."
