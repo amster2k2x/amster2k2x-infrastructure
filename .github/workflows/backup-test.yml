@@ -64,26 +64,35 @@ jobs:
 
           echo "arn=$TASK_ARN" >> $GITHUB_OUTPUT
 
-      - name: Dump postgres and upload to S3
+      - name: Dump and upload from inside the container
         run: |
           SVC="${{ inputs.service }}"
           TASK="${{ steps.task.outputs.arn }}"
           BUCKET="amster2k2x-${BUCKET_ENV}-golden-backups"
 
-          echo "Dumping database directly to S3..."
+          # Both the dump AND the upload happen inside the container's own
+          # shell, using its own task-role credentials. This never pipes
+          # execute-command's noisy interactive stdout into the actual file —
+          # that stream is unreliable (SSM banners, occasional mid-stream
+          # errors) and corrupts anything piped through the runner.
+          echo "Dumping and uploading (this may take ~15-20s for the aws-cli install)..."
           aws ecs execute-command \
             --cluster "$CLUSTER" \
             --task "$TASK" \
             --container postgres \
             --region "$AWS_REGION" \
             --interactive \
-            --command "pg_dump --format=plain --clean --if-exists -U $SVC -d $SVC" \
-            | grep -vE '^(Starting session with SessionId|Exiting session with sessionId)' \
-            | aws s3 cp - "s3://$BUCKET/$SVC/latest.dump" --region "$AWS_REGION"
+            --command "sh -c 'pg_dump --format=plain --clean --if-exists -U $SVC -d $SVC -f /tmp/$SVC.dump && apk add --no-cache aws-cli --quiet && aws s3 cp /tmp/$SVC.dump s3://$BUCKET/$SVC/latest.dump --region $AWS_REGION && echo BACKUP_UPLOAD_COMPLETE'"
 
       - name: Verify upload
         run: |
           SVC="${{ inputs.service }}"
           BUCKET="amster2k2x-${BUCKET_ENV}-golden-backups"
           aws s3 ls "s3://$BUCKET/$SVC/latest.dump"
-          echo "::notice::Golden backup for $SVC saved to s3://$BUCKET/$SVC/latest.dump"
+
+          echo "Sanity-checking the dump has no execute-command pollution..."
+          if aws s3 cp "s3://$BUCKET/$SVC/latest.dump" - | head -20 | grep -qi "session\|SessionId"; then
+            echo "::error::Dump appears to contain SSM session text — something is still wrong."
+            exit 1
+          fi
+          echo "::notice::Golden backup for $SVC saved to s3://$BUCKET/$SVC/latest.dump — looks clean."

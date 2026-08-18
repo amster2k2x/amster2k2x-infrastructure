@@ -57,7 +57,7 @@ resource "aws_iam_role_policy" "task_restore_s3" {
     Version = "2012-10-17"
     Statement = [{
       Effect   = "Allow"
-      Action   = ["s3:GetObject", "s3:ListBucket"]
+      Action   = ["s3:GetObject", "s3:ListBucket", "s3:PutObject"]
       Resource = [
         data.terraform_remote_state.workload_account.outputs.backup_bucket_arn,
         "${data.terraform_remote_state.workload_account.outputs.backup_bucket_arn}/*"
