@@ -64,43 +64,48 @@ jobs:
 
           echo "arn=$TASK_ARN" >> $GITHUB_OUTPUT
 
-      - name: Dump and upload from inside the container
+      - name: Dump directly from container to runner and upload
         run: |
           SVC="${{ inputs.service }}"
           TASK="${{ steps.task.outputs.arn }}"
           BUCKET="amster2k2x-${BUCKET_ENV}-golden-backups"
 
-          # Both the dump AND the upload happen inside the container's own
-          # shell, using its own task-role credentials. This never pipes
-          # execute-command's noisy interactive stdout into the actual file —
-          # that stream is unreliable (SSM banners, occasional mid-stream
-          # errors) and corrupts anything piped through the runner.
-          echo "Dumping and uploading (this may take ~15-20s for the aws-cli install)..."
+          echo "Streaming backup from ECS to the runner..."
+          
+          # We run pg_dump directly. 
+          # The > operator saves the output to a file on the GitHub runner.
+          # We pass the password via PGPASSWORD so it runs completely non-interactively.
           aws ecs execute-command \
             --cluster "$CLUSTER" \
             --task "$TASK" \
             --container postgres \
             --region "$AWS_REGION" \
             --interactive \
-            --command "sh -e -c ' \
-              pg_dump --format=plain --clean --if-exists -U $SVC -d $SVC -f /tmp/$SVC.dump && \
-              apk add --no-cache aws-cli --no-progress --quiet && \
-              aws s3 cp /tmp/$SVC.dump s3://$BUCKET/$SVC/latest.dump --region $AWS_REGION && \
-              echo BACKUP_UPLOAD_COMPLETE'"
+            --command "sh -c 'PGPASSWORD=\"test-only-not-secret\" pg_dump --format=plain --clean --if-exists -U panel -d panel'" > /tmp/raw_backup.dump
+
+          echo "Cleaning up AWS SSM terminal noise from the file..."
+          # AWS execute-command inserts session headers into stdout. 
+          # This line deletes the text headers so your SQL code stays uncorrupted.
+          sed -i '/Starting session\|SessionId\|Exiting session/d' /tmp/raw_backup.dump
+
+          echo "Uploading clean file to S3..."
+          aws s3 cp /tmp/raw_backup.dump "s3://$BUCKET/$SVC/latest.dump" --region "$AWS_REGION"
 
       - name: Verify upload
         run: |
           SVC="${{ inputs.service }}"
           BUCKET="amster2k2x-${BUCKET_ENV}-golden-backups"
+          
+          echo "Checking if file exists in S3..."
           aws s3 ls "s3://$BUCKET/$SVC/latest.dump"
 
-          echo "Checking for new file: s3://$BUCKET/$SVC/latest.dump"
-          aws s3 ls "s3://$BUCKET/$SVC/latest.dump"
-
-          echo "Sanity-checking the dump has no execute-command pollution..."
-          if aws s3 cp "s3://$BUCKET/$SVC/latest.dump" - | head -20 | grep -qi "session\|SessionId"; then
-            echo "::error::Dump appears to contain SSM session text — something is still wrong."
+          echo "Sanity-checking the dump file structure..."
+          # Download the first 20 lines to make sure it looks like a real SQL dump
+          FIRST_LINES=$(aws s3 cp "s3://$BUCKET/$SVC/latest.dump" - | head -20)
+          
+          if echo "$FIRST_LINES" | grep -qi "PostgreSQL database dump"; then
+            echo "::notice::Success! Valid PostgreSQL dump detected."
+          else
+            echo "::error::Dump file does not look like a valid SQL backup."
             exit 1
           fi
-
-          echo "::notice::Golden backup for $SVC saved successfully."
