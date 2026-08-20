@@ -42,28 +42,12 @@ resource "aws_iam_role_policy" "execution_secrets" {
   })
 }
 
-# --- Task role: used by the application code / entrypoint scripts at
-# runtime. Only panel and bot need S3 access, for the golden-backup restore.
-resource "aws_iam_role" "task_with_restore" {
-  name               = "amster2k2x-${var.environment}-task-restore"
+# Task role for all regular ECS services.
+# ECS Exec enabled so you can docker exec into any running task for debugging
+# without opening any inbound security group rule.
+resource "aws_iam_role" "task_app" {
+  name               = "amster2k2x-${var.environment}-task-app"
   assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
-}
-
-resource "aws_iam_role_policy" "task_restore_s3" {
-  name = "read-golden-backups"
-  role = aws_iam_role.task_with_restore.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["s3:GetObject", "s3:ListBucket", "s3:PutObject"]
-      Resource = [
-        data.terraform_remote_state.workload_account.outputs.backup_bucket_arn,
-        "${data.terraform_remote_state.workload_account.outputs.backup_bucket_arn}/*"
-      ]
-    }]
-  })
 }
 
 # Required for ECS Exec / SSM port-forwarding into a running task — this is
@@ -71,7 +55,7 @@ resource "aws_iam_role_policy" "task_restore_s3" {
 # without opening any inbound security group rule.
 resource "aws_iam_role_policy" "task_ecs_exec" {
   name = "ecs-exec-session-manager"
-  role = aws_iam_role.task_with_restore.id
+  role = aws_iam_role.task_app.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -88,8 +72,46 @@ resource "aws_iam_role_policy" "task_ecs_exec" {
   })
 }
 
-# Subscription page and node don't touch S3 — plain task role, no extra policy.
-resource "aws_iam_role" "task_plain" {
-  name               = "amster2k2x-${var.environment}-task-plain"
+# Task role for the ephemeral db-tools Fargate task only.
+# Needs S3 read/write on the backup bucket and access to the RDS master
+# secret so backup.sh / restore.sh can authenticate against PostgreSQL.
+# No ECS Exec — the task exits on its own; interactive sessions don't apply.
+resource "aws_iam_role" "task_db_tools" {
+  name               = "amster2k2x-${var.environment}-task-db-tools"
   assume_role_policy = data.aws_iam_policy_document.ecs_assume.json
+}
+
+resource "aws_iam_role_policy" "task_db_tools_s3" {
+  name = "backups-bucket-access"
+  role = aws_iam_role.task_db_tools.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:ListBucket"
+      ]
+      Resource = [
+        data.terraform_remote_state.workload_account.outputs.backups_bucket_arn,
+        "${data.terraform_remote_state.workload_account.outputs.backups_bucket_arn}/*"
+      ]
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "task_db_tools_secrets" {
+  name = "rds-master-secret-access"
+  role = aws_iam_role.task_db_tools.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["secretsmanager:GetSecretValue"]
+      Resource = aws_secretsmanager_secret.rds_master.arn
+    }]
+  })
 }

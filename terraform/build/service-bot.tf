@@ -2,12 +2,11 @@ resource "aws_ecs_task_definition" "bot" {
   family                   = "amster2k2x-${var.environment}-bot"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "1024"
-  memory                   = "2048"
+  cpu                      = "512"
+  memory                   = "1024"
   execution_role_arn       = aws_iam_role.execution.arn
-  task_role_arn            = aws_iam_role.task_with_restore.arn
+  task_role_arn            = aws_iam_role.task_app.arn
 
-  # Explicitly configure Fargate to run on ARM64
   runtime_platform {
     operating_system_family = "LINUX"
     cpu_architecture        = "ARM64"
@@ -15,136 +14,105 @@ resource "aws_ecs_task_definition" "bot" {
 
   container_definitions = jsonencode([
     {
-      name      = "postgres"
-      image     = "postgres:16-alpine"
-      essential = true
-      environment = [
-        { name = "POSTGRES_USER", value = "bot" },
-        { name = "POSTGRES_PASSWORD", value = "test-only-not-secret" },
-        { name = "POSTGRES_DB", value = "bot" }
-      ]
-      healthCheck = {
-        command     = ["CMD-SHELL", "pg_isready -U bot || exit 1"]
-        interval    = 10
-        timeout     = 5
-        retries     = 5
-        startPeriod = 10
-      }
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.ecs["bot"].name
-          "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "postgres"
-        }
-      }
-    },
-    {
-      name      = "redis"
-      image     = "redis:7-alpine"
-      essential = true
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.ecs["bot"].name
-          "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "redis"
-        }
-      }
-    },
-    {
-      name      = "restore"
-      image     = var.restore_helper_image
-      essential = false
-      dependsOn = [{ containerName = "postgres", condition = "HEALTHY" }]
-      environment = [
-        { name = "BACKUP_S3_BUCKET", value = data.terraform_remote_state.workload_account.outputs.backup_bucket_name },
-        { name = "BACKUP_S3_KEY", value = "bot/latest.dump" },
-        { name = "PGHOST", value = "localhost" },
-        { name = "PGUSER", value = "bot" },
-        { name = "PGPASSWORD", value = "test-only-not-secret" },
-        { name = "PGDATABASE", value = "bot" }
-      ]
-      command = ["/restore.sh"]
-      repositoryCredentials = {
-        credentialsParameter = data.terraform_remote_state.workload_account.outputs.ghcr_pull_secret_arn
-      }
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.ecs["bot"].name
-          "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "restore"
-        }
-      }
-    },
-    {
       name      = "bot"
       image     = var.bot_image
       essential = true
-      dependsOn = [
-        { containerName = "restore", condition = "COMPLETE" },
-        { containerName = "redis", condition = "START" }
+
+      portMappings = [
+        {
+          name          = "bot"
+          containerPort = var.bot_web_port  # 8080
+          protocol      = "tcp"
+        }
       ]
-      # Single FastAPI server: webhooks, /health, and the cabinet's /api all
-      # go through this one port per your .env.example comment.
-      portMappings = [{ name = "bot", containerPort = var.bot_web_port, protocol = "tcp" }]
+
       environment = [
-        { name = "ADMIN_IDS", value = "59155651"},
-        { name = "BOT_RUN_MODE", value = "webhook"},
-        { name = "DEBUG", value = "true"},
-        { name = "BOT_USERNAME", value = "amster2k2x_test_bot"},
-        { name = "DATABASE_MODE", value = "postgresql" },
-        { name = "POSTGRES_HOST", value = "localhost" },
-        { name = "POSTGRES_PORT", value = "5432" },
-        { name = "POSTGRES_DB", value = "bot" },
-        { name = "POSTGRES_USER", value = "bot" },
-        { name = "POSTGRES_PASSWORD", value = "test-only-not-secret" },
-        { name = "REDIS_URL", value = "redis://localhost:6379/0" },
-        # Reaches panel over Service Connect, not through the public ALB.
-        # Service Connect resolves "panel" within the namespace — no external ALB hairpin needed
-        { name = "REMNAWAVE_API_URL", value = "http://panel" },
+        { name = "ADMIN_IDS",    value = var.bot_admin_ids },
+        { name = "BOT_RUN_MODE", value = "webhook" },
+        { name = "DEBUG",        value = "true" },
+        { name = "BOT_USERNAME", value = "amster2k2x_test_bot" },
+
+        # Database — RDS managed, password via DATABASE_URL secret below
+        { name = "DATABASE_MODE",  value = "postgresql" },
+        { name = "POSTGRES_HOST",  value = aws_db_instance.main.address },
+        { name = "POSTGRES_PORT",  value = "5432" },
+        { name = "POSTGRES_DB",    value = "remnawave_bot" },
+        { name = "POSTGRES_USER",  value = "postgres" },       # RDS master user
+
+        # ElastiCache — DB index 1 reserved for bot
+        { name = "REDIS_URL", value = "redis://${aws_elasticache_cluster.main.cache_nodes[0].address}:6379/1" },
+
+        # Panel API — internal Service Connect DNS, never the public ALB
+        { name = "REMNAWAVE_API_URL",  value = "http://panel.amster2k2x.local:${var.panel_backend_port}" },
         { name = "REMNAWAVE_AUTH_TYPE", value = "api_key" },
-        { name = "CABINET_ENABLED", value = "true" },
-        { name = "CABINET_URL", value = "https://${data.terraform_remote_state.workload_account.outputs.hostname}" },
-        { name = "CABINET_ALLOWED_ORIGINS", value = "https://${data.terraform_remote_state.workload_account.outputs.hostname}" },
-        { name = "CABINET_ACCESS_TOKEN_EXPIRE_MINUTES", value = "60"},
-        { name = "CABINET_REFRESH_TOKEN_EXPIRE_DAYS", value = "30"},
-        { name = "CABINET_EMAIL_VERIFICATION_ENABLED", value = "true"},
-        { name = "TELEGRAM_WIDGET_SIZE", value = "medium"},
-        { name = "TELEGRAM_WIDGET_RADIUS", value = "8"},
-        { name = "TELEGRAM_WIDGET_USERPIC", value = "true"},
-        { name = "TELEGRAM_WIDGET_REQUEST_ACCESS", value = "true"},
-        { name = "TELEGRAM_OIDC_ENABLED", value = "true"},
-        { name = "TELEGRAM_OIDC_CLIENT_ID", value = "8029977831"},
-        { name = "BACKUP_AUTO_ENABLED", value = "false"},
-        { name = "WEB_API_ENABLED", value = "true"},
-        { name = "WEB_API_HOST", value = "0.0.0.0"},
-        { name = "WEB_API_PORT", value = "8080"}
+
+        # Cabinet — served at bot.* hostname (shares ALB domain with bot)
+        { name = "CABINET_ENABLED",                    value = "true" },
+        { name = "CABINET_URL",                        value = "https://bot.${local.base_hostname}" },
+        { name = "CABINET_ALLOWED_ORIGINS",            value = "https://bot.${local.base_hostname}" },
+        { name = "CABINET_ACCESS_TOKEN_EXPIRE_MINUTES", value = "60" },
+        { name = "CABINET_REFRESH_TOKEN_EXPIRE_DAYS",  value = "30" },
+        { name = "CABINET_EMAIL_VERIFICATION_ENABLED", value = "true" },
+
+        # Telegram widget config
+        { name = "TELEGRAM_WIDGET_SIZE",           value = "medium" },
+        { name = "TELEGRAM_WIDGET_RADIUS",         value = "8" },
+        { name = "TELEGRAM_WIDGET_USERPIC",        value = "true" },
+        { name = "TELEGRAM_WIDGET_REQUEST_ACCESS", value = "true" },
+        { name = "TELEGRAM_OIDC_ENABLED",          value = "true" },
+        { name = "TELEGRAM_OIDC_CLIENT_ID",        value = "8029977831" },
+
+        # Webhook — public URL Telegram calls back to
+        { name = "WEBHOOK_URL", value = "https://bot.${local.base_hostname}/webhook" },
+
+        # Web API (cabinet backend on same port)
+        { name = "BACKUP_AUTO_ENABLED", value = "false" },
+        { name = "WEB_API_ENABLED",     value = "true" },
+        { name = "WEB_API_HOST",        value = "0.0.0.0" },
+        { name = "WEB_API_PORT",        value = tostring(var.bot_web_port) }
       ]
+
       secrets = [
-        { name = "BOT_TOKEN", valueFrom = data.terraform_remote_state.workload_account.outputs.bot_token_param_arn },
-        { name = "REMNAWAVE_API_KEY", valueFrom = data.terraform_remote_state.workload_account.outputs.panel_api_token_param_arn },
-        # TODO confirm exact var name — .env.example's bot healthcheck sends
-        # this as X-API-Key; ALB target-group health checks can't send
-        # custom headers, so see the note in outputs.tf / README re: this
-        # target group possibly needing an unauthenticated health path instead.
-        { name = "WEB_API_DEFAULT_TOKEN", valueFrom = data.terraform_remote_state.workload_account.outputs.bot_web_api_token_param_arn },
-        { name = "TELEGRAM_OIDC_CLIENT_SECRET", valueFrom = data.terraform_remote_state.workload_account.outputs.telegram_oidc_client_secret_arn }
+        {
+          name      = "POSTGRES_PASSWORD"
+          valueFrom = aws_secretsmanager_secret.rds_master.arn  # master password from data-tier.tf
+        },
+        {
+          name      = "BOT_TOKEN"
+          valueFrom = data.terraform_remote_state.workload_account.outputs.bot_token_param_arn
+        },
+        {
+          name      = "REMNAWAVE_API_KEY"
+          valueFrom = data.terraform_remote_state.workload_account.outputs.panel_api_token_param_arn
+        },
+        {
+          # Used by cabinet's /health and ALB health probe path
+          name      = "WEB_API_DEFAULT_TOKEN"
+          valueFrom = data.terraform_remote_state.workload_account.outputs.bot_web_api_token_param_arn
+        },
+        {
+          name      = "TELEGRAM_OIDC_CLIENT_SECRET"
+          valueFrom = data.terraform_remote_state.workload_account.outputs.telegram_oidc_client_secret_arn
+        }
       ]
+
+      # ECS container health check sends the API key header — ALB probe cannot,
+      # so alb.tf uses a permissive matcher on an unauthenticated path instead.
       healthCheck = {
         command = [
           "CMD-SHELL",
-          "python -c \"import requests, os; requests.get('http://localhost:${var.bot_web_port}/health', headers={'X-API-Key': os.environ.get('WEB_API_DEFAULT_TOKEN')}, timeout=5) or exit(1)\""
+          "python -c \"import requests, os; r=requests.get('http://localhost:${var.bot_web_port}/health', headers={'X-API-Key': os.environ.get('WEB_API_DEFAULT_TOKEN','')}, timeout=5); exit(0 if r.ok else 1)\""
         ]
         interval    = 15
         timeout     = 5
         retries     = 3
-        startPeriod = 20
+        startPeriod = 30  # RDS cold-connect on first start
       }
+
       repositoryCredentials = {
         credentialsParameter = data.terraform_remote_state.workload_account.outputs.ghcr_pull_secret_arn
       }
+
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -153,81 +121,8 @@ resource "aws_ecs_task_definition" "bot" {
           "awslogs-stream-prefix" = "bot"
         }
       }
-    },
-    {
-      name      = "cabinet"
-      image     = var.cabinet_image
-      essential = true
-      dependsOn = [{ containerName = "bot", condition = "START" }]
-      portMappings = [{ containerPort = var.cabinet_port, protocol = "tcp" }] # 80 — nginx-served static build
-      repositoryCredentials = {
-        credentialsParameter = data.terraform_remote_state.workload_account.outputs.ghcr_pull_secret_arn
-      }
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.ecs["bot"].name
-          "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "cabinet"
-        }
-      }
     }
   ])
-}
-
-resource "aws_lb_target_group" "cabinet" {
-  name        = "amster2k2x-${var.environment}-cabinet"
-  port        = var.cabinet_port
-  protocol    = "HTTP"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-
-  health_check {
-    path                = "/"
-    healthy_threshold   = 2
-    unhealthy_threshold = 3
-    interval            = 15
-    timeout             = 5
-  }
-}
-
-resource "aws_lb_target_group" "bot" {
-  name        = "amster2k2x-${var.environment}-bot"
-  port        = var.bot_web_port
-  protocol    = "HTTP"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-
-  # The bot's /health requires X-API-Key which ALB can't send.
-  # Health is determined solely by the ECS container-level healthCheck
-  # (which does send the header). The ALB uses a permissive matcher so it
-  # never marks the target unhealthy based on its own probe alone.
-  health_check {
-    path                = "/api/webhook"  # Telegram webhook endpoint — unauthenticated, returns 200 or 405
-    matcher             = "200-499"       # Accept anything except 5xx; 405 (method not allowed on GET) is fine
-    healthy_threshold   = 2
-    unhealthy_threshold = 10              # Very forgiving — real health verdict comes from ECS, not here
-    interval            = 30
-    timeout             = 10
-  }
-}
-
-# Cabinet's baked-in VITE_API_URL=/api needs this on the SAME port/origin
-# cabinet is served from — this is that split, on the shared :80 listener.
-resource "aws_lb_listener_rule" "bot_api" {
-  listener_arn = aws_lb_listener.cabinet_https.arn
-  priority     = 10
-
-  action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.bot.arn
-  }
-
-  condition {
-    path_pattern {
-      values = ["/api*"]
-    }
-  }
 }
 
 resource "aws_ecs_service" "bot" {
@@ -240,18 +135,12 @@ resource "aws_ecs_service" "bot" {
   enable_execute_command = true
 
   network_configuration {
-    subnets          = aws_subnet.public[*].id
-    security_groups  = [aws_security_group.web_services.id]
-    assign_public_ip = true
+    subnets          = aws_subnet.private_app[*].id
+    security_groups  = [aws_security_group.ecs_tasks.id]
+    assign_public_ip = false
   }
 
-  # Two containers in this task, two separate ALB targets.
-  load_balancer {
-    target_group_arn = aws_lb_target_group.cabinet.arn
-    container_name   = "cabinet"
-    container_port   = var.cabinet_port
-  }
-
+  # Cabinet is a separate ECS service now — only one load_balancer block here
   load_balancer {
     target_group_arn = aws_lb_target_group.bot.arn
     container_name   = "bot"
@@ -261,7 +150,16 @@ resource "aws_ecs_service" "bot" {
   service_connect_configuration {
     enabled   = true
     namespace = aws_service_discovery_http_namespace.main.arn
+
+    service {
+      port_name      = "bot"
+      discovery_name = "bot"
+      client_alias {
+        port     = var.bot_web_port
+        dns_name = "bot.amster2k2x.local"
+      }
+    }
   }
 
-  depends_on = [aws_lb_listener.cabinet_https]
+  depends_on = [aws_lb_listener.https]
 }

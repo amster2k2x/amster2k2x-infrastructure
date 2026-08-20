@@ -6,7 +6,7 @@ on:
       panel_backend_image:
         required: true
         type: string
-      bot_image:
+      bot_worker_image:
         required: true
         type: string
       cabinet_image:
@@ -18,6 +18,10 @@ on:
       node_image:
         required: true
         type: string
+      db_tools_image:        # has a default in variables.tf but explicit is better
+        required: false
+        type: string
+        default: ghcr.io/amster2k2x/db-tools:latest
       auto_destroy:
         description: 'Destroy after smoke tests. Set false to leave it running for manual poking — tear down with destroy-test.yml when done.'
         required: false
@@ -32,10 +36,11 @@ env:
   AWS_REGION: eu-north-1
   TF_VAR_environment: test
   TF_VAR_panel_backend_image: ${{ inputs.panel_backend_image }}
-  TF_VAR_bot_image: ${{ inputs.bot_image }}
+  TF_VAR_bot_image: ${{ inputs.bot_worker_image }}
   TF_VAR_cabinet_image: ${{ inputs.cabinet_image }}
   TF_VAR_subscription_page_image: ${{ inputs.subscription_page_image }}
   TF_VAR_node_image: ${{ inputs.node_image }}
+  TF_VAR_db_tools_image: ${{ inputs.db_tools_image }}
 
 jobs:
   deploy:
@@ -83,7 +88,7 @@ jobs:
             -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
             -backend-config="key=build/test/terraform.tfstate" \
             -backend-config="region=${{ env.AWS_REGION }}" \
-            -backend-config="dynamodb_table=${{ secrets.TF_LOCK_TABLE }}"
+            -backend-config="use_lockfile=true"
         env:
           TF_VAR_workload_account_state_bucket: ${{ secrets.TF_BOOTSTRAP_STATE_BUCKET }}
 
@@ -92,10 +97,40 @@ jobs:
         env:
           TF_VAR_workload_account_state_bucket: ${{ secrets.TF_BOOTSTRAP_STATE_BUCKET }}
 
-      - name: Update Dynu DNS — point test.amster2k2x.mywire.org at the new ALB
+      - name: Run db-tools restore
+        run: |
+          TASK_DEF=$(terraform output -raw db_tools_task_definition_arn)
+          SUBNETS=$(terraform output -json private_app_subnet_ids | jq -r 'join(",")')
+          SG=$(terraform output -raw ecs_tasks_sg_id)
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster amster2k2x-test \
+            --task-definition "$TASK_DEF" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SG],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"db-tools","command":["/scripts/restore.sh"]}]}' \
+            --query 'tasks[0].taskArn' \
+            --output text)
+
+          echo "Restore task: $TASK_ARN"
+          aws ecs wait tasks-stopped --cluster amster2k2x-test --tasks "$TASK_ARN"
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster amster2k2x-test \
+            --tasks "$TASK_ARN" \
+            --query 'tasks[0].containers[0].exitCode' \
+            --output text)
+
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "::error::db-tools restore failed with exit code $EXIT_CODE"
+            exit 1
+          fi
+          echo "Restore complete."
+
+      - name: Update Dynu DNS — point ALB subdomains at the new ALB
         run: |
           ALB_DNS=$(terraform output -raw alb_dns_name)
-          echo "Pointing test.amster2k2x.mywire.org → $ALB_DNS"
+          echo "ALB DNS: $ALB_DNS"
 
           DOMAIN_ID=$(curl -sf "https://api.dynu.com/v2/dns" \
             -H "API-Key: ${{ secrets.DYNU_API_KEY }}" \
@@ -107,35 +142,40 @@ jobs:
             exit 1
           fi
 
-          RECORD_ID=$(curl -sf "https://api.dynu.com/v2/dns/${DOMAIN_ID}/record" \
-            -H "API-Key: ${{ secrets.DYNU_API_KEY }}" \
-            -H "Accept: application/json" \
-            | jq -r '([.dnsRecords[]? | select(.nodeName == "test")][0].id) // empty')
+          for SUBDOMAIN in panel.test sub.test bot.test; do
+            echo "Upserting CNAME: ${SUBDOMAIN}.amster2k2x.mywire.org → $ALB_DNS"
 
-          if [ -n "$RECORD_ID" ]; then
-            curl -sf -X DELETE "https://api.dynu.com/v2/dns/${DOMAIN_ID}/record/${RECORD_ID}" \
-              -H "API-Key: ${{ secrets.DYNU_API_KEY }}" > /dev/null
-          fi
+            RECORD_ID=$(curl -sf "https://api.dynu.com/v2/dns/${DOMAIN_ID}/record" \
+              -H "API-Key: ${{ secrets.DYNU_API_KEY }}" \
+              -H "Accept: application/json" \
+              | jq -r --arg sub "$SUBDOMAIN" \
+                '([.dnsRecords[]? | select(.nodeName == $sub)][0].id) // empty')
 
-          curl -sf -X POST "https://api.dynu.com/v2/dns/${DOMAIN_ID}/record" \
-            -H "API-Key: ${{ secrets.DYNU_API_KEY }}" \
-            -H "Content-Type: application/json" \
-            -H "Accept: application/json" \
-            -d "{
-              \"nodeName\": \"test\", 
-              \"recordType\": \"CNAME\", 
-              \"ttl\": 120, 
-              \"state\": true, 
-              \"hostName\": \"test.amster2k2x.mywire.org\", 
-              \"host\": \"${ALB_DNS}\"
-            }"
+            if [ -n "$RECORD_ID" ]; then
+              curl -sf -X DELETE "https://api.dynu.com/v2/dns/${DOMAIN_ID}/record/${RECORD_ID}" \
+                -H "API-Key: ${{ secrets.DYNU_API_KEY }}" > /dev/null
+            fi
+
+            curl -sf -X POST "https://api.dynu.com/v2/dns/${DOMAIN_ID}/record" \
+              -H "API-Key: ${{ secrets.DYNU_API_KEY }}" \
+              -H "Content-Type: application/json" \
+              -H "Accept: application/json" \
+              -d "{
+                \"nodeName\": \"${SUBDOMAIN}\",
+                \"recordType\": \"CNAME\",
+                \"ttl\": 120,
+                \"state\": true,
+                \"hostName\": \"${SUBDOMAIN}.amster2k2x.mywire.org\",
+                \"host\": \"${ALB_DNS}\"
+              }"
+          done
 
           echo "Waiting 60s for DNS propagation..."
           sleep 60
 
       - name: Wait for ECS services to be stable
         run: |
-          for svc in panel bot subscription node; do
+          for svc in panel bot-worker cabinet subscription node; do
             echo "Waiting for $svc..."
             aws ecs wait services-stable \
               --cluster amster2k2x-test \
@@ -145,29 +185,22 @@ jobs:
 
       - name: Smoke tests
         run: |
-          HOST=$(terraform output -raw hostname)
-          curl -sf "https://$HOST:8081/health"
-          curl -sf "https://$HOST/"
-        # curl -sf "https://$HOST:8082/"
-        # curl -sf "https://$HOST:8081/api/nodes" | grep -q '"connected":true'
-
-#      - name: Register test bot webhook
-#        if: success()
-#        run: |
-#          HOST=$(terraform output -raw hostname)
-#          curl -sf "https://api.telegram.org/bot${{ secrets.TEST_TELEGRAM_BOT_TOKEN }}/setWebhook" \
-#            -d "url=https://$HOST/api/webhook"
+          curl -sf "https://panel.test.amster2k2x.mywire.org/" -o /dev/null \
+            && echo "Panel OK"
+          curl -sf "https://sub.test.amster2k2x.mywire.org/"   -o /dev/null \
+            && echo "Sub page OK"
+          curl -sf "https://bot.test.amster2k2x.mywire.org/"   -o /dev/null \
+            && echo "Bot OK"
 
       - name: Print environment URLs
         if: ${{ inputs.auto_destroy == false }}
         run: |
-          HOST=$(terraform output -raw hostname)
           echo "### Test environment is running" >> $GITHUB_STEP_SUMMARY
           echo "| Service | URL |" >> $GITHUB_STEP_SUMMARY
           echo "|---------|-----|" >> $GITHUB_STEP_SUMMARY
-          echo "| Cabinet | https://$HOST |" >> $GITHUB_STEP_SUMMARY
-          echo "| Panel   | https://$HOST:8081 |" >> $GITHUB_STEP_SUMMARY
-          echo "| Sub page| https://$HOST:8082 |" >> $GITHUB_STEP_SUMMARY
+          echo "| Panel   | https://panel.test.amster2k2x.mywire.org |" >> $GITHUB_STEP_SUMMARY
+          echo "| Sub page| https://sub.test.amster2k2x.mywire.org   |" >> $GITHUB_STEP_SUMMARY
+          echo "| Cabinet | https://bot.test.amster2k2x.mywire.org   |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Run **destroy-test.yml** when done." >> $GITHUB_STEP_SUMMARY
 

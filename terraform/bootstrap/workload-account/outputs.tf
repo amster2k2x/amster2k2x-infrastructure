@@ -70,3 +70,12 @@ output "acm_validation_cname" {
 output "hostname" {
   value = "${var.environment}.${var.base_domain}"
 }
+
+output "backups_bucket_name" {
+  value       = aws_s3_bucket.backups.bucket
+  description = "Ephemeral backup/restore bucket — referenced by db-tools task scripts."
+}
+
+output "backups_bucket_arn" {
+  value = aws_s3_bucket.backups.arn
+}

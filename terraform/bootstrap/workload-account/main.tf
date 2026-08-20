@@ -100,7 +100,8 @@ resource "aws_iam_role_policy" "deploy_permissions" {
         Effect = "Allow"
         Action = [
           "ec2:*", "ecs:*", "elasticloadbalancing:*", "logs:*",
-          "servicediscovery:*", "application-autoscaling:*"
+          "servicediscovery:*", "application-autoscaling:*",
+          "rds:*", "elasticache:*"
         ]
         Resource = "*"
       },
@@ -125,7 +126,9 @@ resource "aws_iam_role_policy" "deploy_permissions" {
           StringEquals = {
             "iam:AWSServiceName" = [
               "elasticloadbalancing.amazonaws.com",
-              "ecs.amazonaws.com"
+              "ecs.amazonaws.com",
+              "rds.amazonaws.com",
+              "elasticache.amazonaws.com"
             ]
           }
         }
@@ -224,16 +227,50 @@ resource "aws_s3_bucket_lifecycle_configuration" "golden_backups" {
   rule {
     id     = "expire-old-versions"
     status = "Enabled"
+    filter {}
     noncurrent_version_expiration { noncurrent_days = 30 }
   }
 }
 
 # ---------------------------------------------------------------------------
-# ACM — issued once, DNS-validated once in Dynu, never re-requested.
+# S3 — ephemeral backup/restore cycle (db-tools task reads/writes here).
+# Separate from golden_backups: golden = manual baseline, this = automated cycle.
+# ---------------------------------------------------------------------------
+resource "aws_s3_bucket" "backups" {
+  bucket = "amster2k2x-${var.environment}-backups"
+}
+
+resource "aws_s3_bucket_versioning" "backups" {
+  bucket = aws_s3_bucket.backups.id
+  versioning_configuration { status = "Enabled" }
+}
+
+resource "aws_s3_bucket_public_access_block" "backups" {
+  bucket                  = aws_s3_bucket.backups.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "backups" {
+  bucket = aws_s3_bucket.backups.id
+
+  rule {
+    id     = "expire-history"
+    status = "Enabled"
+    filter { prefix = "history/" }
+    expiration { days = 30 }
+  }
+}
+
+# ---------------------------------------------------------------------------
+# ACM — issued once, Wildcard, DNS-validated once in Dynu, never re-requested.
 # ---------------------------------------------------------------------------
 resource "aws_acm_certificate" "env" {
-  domain_name       = "${var.environment}.${var.base_domain}"
-  validation_method = "DNS"
+  domain_name               = "${var.environment}.${var.base_domain}"
+  subject_alternative_names = ["*.${var.environment}.${var.base_domain}"]
+  validation_method         = "DNS"
 
   lifecycle {
     create_before_destroy = true

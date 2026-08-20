@@ -1,19 +1,22 @@
 output "alb_dns_name" {
-  value = aws_lb.main.dns_name
-}
-
-output "hostname" {
-  value = data.terraform_remote_state.workload_account.outputs.hostname
-}
-
-output "cabinet_url" {
-  value = "https://${data.terraform_remote_state.workload_account.outputs.hostname}"
+  value       = aws_lb.main.dns_name
+  description = "Point all Dynu subdomains (panel.*, sub.*, bot.*) as CNAMEs to this value."
 }
 
 output "panel_url" {
-  value = "https://${data.terraform_remote_state.workload_account.outputs.hostname}:8081"
+  value = "https://panel.${local.base_hostname}"
 }
 
-output "subscription_url" {
-  value = "https://${data.terraform_remote_state.workload_account.outputs.hostname}:8082"
+output "sub_url" {
+  value = "https://sub.${local.base_hostname}"
+}
+
+output "bot_url" {
+  value = "https://bot.${local.base_hostname}"
+}
+
+output "rds_endpoint" {
+  value       = aws_db_instance.main.endpoint
+  sensitive   = true
+  description = "Written to SSM by GHA after apply, consumed by db-tools task as RDS_PRIVATE_ENDPOINT."
 }

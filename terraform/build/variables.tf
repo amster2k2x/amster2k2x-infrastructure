@@ -19,6 +19,12 @@ variable "workload_account_state_key" {
   default = "bootstrap/terraform.tfstate"
 }
 
+variable "vpc_cidr" {
+  type        = string
+  description = "CIDR block for the VPC. Subnets are carved from this range."
+  default     = "10.0.0.0/16"
+}
+
 # --- Image tags, supplied by the GitHub Actions run that triggered this apply ---
 # Each defaults to :latest so `terraform plan` works standalone, but CI should
 # always pass the exact digest/tag it just built and scanned.
@@ -47,10 +53,10 @@ variable "node_image" {
   default = "ghcr.io/amster2k2x/remnawave-node:latest"
 }
 
-variable "restore_helper_image" {
+variable "db_tools_image" {
   type        = string
-  description = "Tiny image with psql + aws-cli, used to pull the golden dump from S3 and restore it. See scripts/restore-helper.Dockerfile."
-  default     = "ghcr.io/amster2k2x/restore-helper:latest"
+  description = "Image containing pg_dump, pg_restore, aws-cli and jq. Built and pushed to GHCR via CI pipeline."
+  default     = "ghcr.io/amster2k2x/db-tools-image:latest"
 }
 
 # --- App-specific config you'll want to fill in once you share the compose files ---
@@ -83,4 +89,10 @@ variable "cabinet_port" {
 variable "subscription_page_port" {
   type    = number
   default = 3010 # APP_PORT in subscription-page .env.sample
+}
+
+variable "bot_admin_ids" {
+  type        = string
+  description = "Comma-separated list of Telegram user IDs who are bot admins."
+  default     = "59155651"
 }
