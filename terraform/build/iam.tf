@@ -29,13 +29,15 @@ resource "aws_iam_role_policy" "execution_secrets" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect   = "Allow"
-        Action   = ["secretsmanager:GetSecretValue"]
-        Resource = data.terraform_remote_state.workload_account.outputs.ghcr_pull_secret_arn
+        # Covers: ghcr-pull, rds/master, rds/panel-db-url, rds/bot-db-url,
+        # and any future secrets added under this path.
+        Effect = "Allow"
+        Action = ["secretsmanager:GetSecretValue"]
+        Resource = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:amster2k2x/${var.environment}/*"
       },
       {
-        Effect   = "Allow"
-        Action   = ["ssm:GetParameters", "ssm:GetParameter"]
+        Effect = "Allow"
+        Action = ["ssm:GetParameters", "ssm:GetParameter"]
         Resource = data.terraform_remote_state.workload_account.outputs.ssm_parameter_path_prefix_arn
       }
     ]
