@@ -89,18 +89,18 @@ resource "aws_iam_role_policy" "task_db_tools_s3" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Action = [
-        "s3:GetObject",
-        "s3:PutObject",
-        "s3:ListBucket"
-      ]
-      Resource = [
-        data.terraform_remote_state.workload_account.outputs.backups_bucket_arn,
-        "${data.terraform_remote_state.workload_account.outputs.backups_bucket_arn}/*"
-      ]
-    }]
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["s3:ListBucket"]
+        Resource = data.terraform_remote_state.workload_account.outputs.backups_bucket_arn
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["s3:GetObject", "s3:PutObject"]
+        Resource = "${data.terraform_remote_state.workload_account.outputs.backups_bucket_arn}/*"
+      }
+    ]
   })
 }
 
@@ -110,10 +110,17 @@ resource "aws_iam_role_policy" "task_db_tools_secrets" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["secretsmanager:GetSecretValue"]
-      Resource = aws_secretsmanager_secret.rds_master.arn
-    }]
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["secretsmanager:GetSecretValue"]
+        Resource = aws_secretsmanager_secret.rds_master.arn
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["kms:Decrypt"]
+        Resource = "*" 
+      }
+    ]
   })
 }

@@ -47,7 +47,7 @@ resource "aws_ecs_task_definition" "panel" {
 
         # Public-facing domain URLs — host-based, no ports
         { name = "PANEL_DOMAIN",      value = "panel.${local.base_hostname}" },
-        { name = "SUB_PUBLIC_DOMAIN", value = "sub.${local.base_hostname}/api/sub" },
+        { name = "SUB_PUBLIC_DOMAIN", value = "sub.${local.base_hostname}" },
         { name = "FRONT_END_DOMAIN",  value = "*" },
 
         { name = "METRICS_USER",                       value = "admin" },
