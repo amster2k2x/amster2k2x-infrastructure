@@ -118,8 +118,8 @@ jobs:
           EXIT_CODE=$(aws ecs describe-tasks \
             --cluster amster2k2x-test \
             --tasks "$TASK_ARN" \
-            --query 'tasks[0].containers[0].exitCode' \
-            --output text)
+            --query 'tasks[0].{stopCode:stopCode,stoppedReason:stoppedReason}' \
+            --output json)
 
           if [ "$EXIT_CODE" != "0" ]; then
             echo "::error::db-tools restore failed with exit code $EXIT_CODE"
