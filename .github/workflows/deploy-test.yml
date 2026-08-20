@@ -92,6 +92,18 @@ jobs:
         env:
           TF_VAR_workload_account_state_bucket: ${{ secrets.TF_BOOTSTRAP_STATE_BUCKET }}
 
+      - name: Release stale state lock (if any)
+        run: |
+          terraform force-unlock -force $(
+            terraform providers lock 2>/dev/null || true
+            aws s3api get-object \
+              --bucket "${{ vars.TF_STATE_BUCKET }}" \
+              --key "build/test/terraform.tfstate.tflock" \
+              /tmp/lockfile.json 2>/dev/null \
+            && jq -r '.ID' /tmp/lockfile.json || true
+          )
+        continue-on-error: true
+
       - name: Terraform apply
         run: terraform apply -auto-approve
         env:
