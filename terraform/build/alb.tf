@@ -56,9 +56,26 @@ resource "aws_lb_listener" "https" {
 # panel and sub are unambiguous host matches.
 # bot.* is split: /api/* and /webhook go to bot, /* falls through to cabinet.
 # ---------------------------------------------------------------------------
-resource "aws_lb_listener_rule" "panel" {
+resource "aws_lb_listener_rule" "panel_health" {
   listener_arn = aws_lb_listener.https.arn
   priority     = 10
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.panel_health.arn
+  }
+
+  condition {
+    host_header { values = ["panel.${local.base_hostname}"] }
+  }
+  condition {
+    path_pattern { values = ["/health"] }
+  }
+}
+
+resource "aws_lb_listener_rule" "panel" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 15
 
   action {
     type             = "forward"
@@ -148,6 +165,24 @@ resource "aws_lb_target_group" "panel" {
 
   health_check {
     port                = var.panel_metrics_port  # 3001 — health only
+    path                = "/health"
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
+    interval            = 30
+  }
+}
+
+resource "aws_lb_target_group" "panel_health" {
+  name        = "amster2k2x-${var.environment}-panel-health"
+  port        = var.panel_metrics_port  # 3001 — health probe only
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
+
+  deregistration_delay = 30
+
+  health_check {
+    port                = var.panel_metrics_port
     path                = "/health"
     healthy_threshold   = 2
     unhealthy_threshold = 3

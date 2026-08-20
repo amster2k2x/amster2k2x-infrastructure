@@ -165,7 +165,7 @@ resource "aws_route_table" "app" {
 
 resource "aws_route_table_association" "app" {
   count          = local.az_count
-  subnet_id      = aws_subnet.app[count.index].id
+  subnet_id      = aws_subnet.private_app[count.index].id
   route_table_id = aws_route_table.app.id
 }
 
