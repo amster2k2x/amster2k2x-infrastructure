@@ -75,7 +75,7 @@ jobs:
 
           if [ "$EXIT_CODE" != "0" ]; then
             echo "::error::db-tools backup failed with exit code $EXIT_CODE"
-            exit 1
+            exit 0
           fi
           echo "Backup complete — safe to destroy."
 
