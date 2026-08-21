@@ -3,7 +3,7 @@ resource "aws_ecs_task_definition" "subscription" {
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   cpu                      = "512"
-  memory                   = "512"
+  memory                   = "1024"
   execution_role_arn       = aws_iam_role.execution.arn
   task_role_arn            = aws_iam_role.task_app.arn
   # Explicitly configure Fargate to run on ARM64
