@@ -38,7 +38,7 @@ resource "aws_ecs_task_definition" "subscription" {
         { name = "REMNAWAVE_API_TOKEN", valueFrom = data.terraform_remote_state.workload_account.outputs.panel_api_token_param_arn }
       ]
       healthCheck = {
-        command     = ["CMD-SHELL", "curl -sf http://localhost:${var.subscription_page_port} > /dev/null 2>&1 || exit 0"]
+        command     = ["CMD-SHELL", "curl -sf http://localhost:${var.subscription_page_port}/internal/health > /dev/null 2>&1 || exit 0"]
         interval    = 30
         timeout     = 5
         retries     = 3
