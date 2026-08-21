@@ -1,5 +1,5 @@
 #!/bin/sh
-set -eu
+set -euxv
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 

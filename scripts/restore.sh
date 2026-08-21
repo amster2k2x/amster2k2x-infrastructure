@@ -1,5 +1,5 @@
 #!/bin/sh
-set -eu
+set -euxv
 
 echo "=== Fetching RDS credentials from Secrets Manager ==="
 SECRET_JSON=$(aws secretsmanager get-secret-value \
