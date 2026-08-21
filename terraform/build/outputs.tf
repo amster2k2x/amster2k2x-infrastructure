@@ -20,3 +20,8 @@ output "rds_endpoint" {
   sensitive   = true
   description = "Written to SSM by GHA after apply, consumed by db-tools task as RDS_PRIVATE_ENDPOINT."
 }
+
+output "backups_bucket_name" {
+  value       = data.terraform_remote_state.workload_account.outputs.backups_bucket_name
+  description = "S3 bucket for the automated backup/restore cycle."
+}
