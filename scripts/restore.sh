@@ -11,32 +11,8 @@ PGPASSWORD=$(echo "${SECRET_JSON}" | jq -r .password)
 export PGPASSWORD
 
 # ---------------------------------------------------------------------------
-# First-run guard: if no backup exists yet (BOOTSTRAP.md Step 5), skip
-# restore entirely rather than failing. ECS services start with empty DBs
-# and the panel initialises its own schema on first boot.
-# ---------------------------------------------------------------------------
-echo "=== Checking for canonical backups in S3 ==="
-PANEL_EXISTS=true
-BOT_EXISTS=true
-
-if ! aws s3 ls "${S3_BUCKET}/panel_latest.dump" > /dev/null 2>&1; then
-  echo "WARNING: panel_latest.dump not found in ${S3_BUCKET} — skipping panel restore."
-  PANEL_EXISTS=false
-fi
-
-if ! aws s3 ls "${S3_BUCKET}/bot_latest.dump" > /dev/null 2>&1; then
-  echo "WARNING: bot_latest.dump not found in ${S3_BUCKET} — skipping bot restore."
-  BOT_EXISTS=false
-fi
-
-if [ "${PANEL_EXISTS}" = "false" ] && [ "${BOT_EXISTS}" = "false" ]; then
-  echo "No backups found. First run — starting with empty databases. See BOOTSTRAP.md Step 5."
-  exit 0
-fi
-
-# ---------------------------------------------------------------------------
-# Ensure logical databases exist before pg_restore tries to connect to them.
-# PostgreSQL has no CREATE DATABASE IF NOT EXISTS, so check pg_database first.
+# Always ensure logical databases exist — even on first run before any
+# backups have been captured. Panel and bot need these to start at all.
 # ---------------------------------------------------------------------------
 ensure_db() {
   DB_NAME="$1"
@@ -49,18 +25,39 @@ ensure_db() {
 
   if [ "${DB_EXISTS}" != "1" ]; then
     echo "Creating database ${DB_NAME}..."
-    psql \
-      -h "${RDS_PRIVATE_ENDPOINT}" \
-      -U "${DB_USER}" \
-      -d postgres \
+    psql -h "${RDS_PRIVATE_ENDPOINT}" -U "${DB_USER}" -d postgres \
       -c "CREATE DATABASE \"${DB_NAME}\";"
   else
     echo "Database ${DB_NAME} already exists."
   fi
 }
 
+echo "=== Ensuring logical databases exist ==="
 ensure_db "${PANEL_DB_NAME}"
 ensure_db "${BOT_DB_NAME}"
+
+# ---------------------------------------------------------------------------
+# First-run guard: if no backups exist yet, databases are now created above
+# and services will initialise their own schema on first boot.
+# ---------------------------------------------------------------------------
+echo "=== Checking for canonical backups in S3 ==="
+PANEL_EXISTS=true
+BOT_EXISTS=true
+
+if ! aws s3 ls "${S3_BUCKET}/panel_latest.dump" > /dev/null 2>&1; then
+  echo "WARNING: panel_latest.dump not found — skipping panel restore."
+  PANEL_EXISTS=false
+fi
+
+if ! aws s3 ls "${S3_BUCKET}/bot_latest.dump" > /dev/null 2>&1; then
+  echo "WARNING: bot_latest.dump not found — skipping bot restore."
+  BOT_EXISTS=false
+fi
+
+if [ "${PANEL_EXISTS}" = "false" ] && [ "${BOT_EXISTS}" = "false" ]; then
+  echo "No backups found. Databases created above. Services will self-initialise."
+  exit 0
+fi
 
 # ---------------------------------------------------------------------------
 # Restore — --no-owner prevents ownership conflicts since we restore as the
