@@ -63,7 +63,7 @@ resource "aws_ecs_task_definition" "bot" {
         { name = "TELEGRAM_OIDC_CLIENT_ID",        value = "8029977831" },
 
         # Webhook — public URL Telegram calls back to
-        { name = "WEBHOOK_URL", value = "https://bot.${local.base_hostname}/webhook" },
+        { name = "WEBHOOK_PATH", value = "/webhook" },
 
         # Web API (cabinet backend on same port)
         { name = "BACKUP_AUTO_ENABLED", value = "false" },
@@ -94,6 +94,10 @@ resource "aws_ecs_task_definition" "bot" {
         {
           name      = "TELEGRAM_OIDC_CLIENT_SECRET"
           valueFrom = data.terraform_remote_state.workload_account.outputs.telegram_oidc_client_secret_arn
+        },
+        {
+          name     = "CABINET_JWT_SECRET_KEY"
+          valueFrom = data.terraform_remote_state.workload_account.outputs.cabinet_jwt_secret_key_param_arn
         }
       ]
 
