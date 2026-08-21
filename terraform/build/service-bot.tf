@@ -94,10 +94,6 @@ resource "aws_ecs_task_definition" "bot" {
         {
           name      = "TELEGRAM_OIDC_CLIENT_SECRET"
           valueFrom = data.terraform_remote_state.workload_account.outputs.telegram_oidc_client_secret_arn
-        },
-        {
-          name     = "CABINET_JWT_SECRET_KEY"
-          valueFrom = data.terraform_remote_state.workload_account.outputs.cabinet_jwt_secret_key_param_arn
         }
       ]
 
