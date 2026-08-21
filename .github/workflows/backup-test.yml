@@ -1,15 +1,12 @@
-name: Test environment - capture golden backup
+name: Test environment - manual backup
 
 on:
   workflow_dispatch:
     inputs:
-      service:
-        description: 'Which service to back up'
+      confirm:
+        description: 'Overwrites panel_latest.dump and bot_latest.dump. Type "yes" to proceed.'
         required: true
-        type: choice
-        options:
-          - panel
-          - bot
+        type: string
 
 permissions:
   id-token: write
@@ -17,14 +14,23 @@ permissions:
 
 env:
   AWS_REGION: eu-north-1
-  CLUSTER: amster2k2x-test
-  BUCKET_ENV: test
 
 jobs:
   backup:
     runs-on: ubuntu-latest
     environment: test
+    defaults:
+      run:
+        working-directory: terraform/build
     steps:
+      - name: Confirm intent
+        if: inputs.confirm != 'yes'
+        run: |
+          echo "::error::Type 'yes' in the confirm field to overwrite the latest backups."
+          exit 1
+
+      - uses: actions/checkout@v4
+
       - name: Assume cicd-runner hub role
         uses: aws-actions/configure-aws-credentials@v6
         with:
@@ -37,72 +43,73 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
-          role-session-name: gha-test-deploy
+          role-session-name: gha-test-backup
           role-chaining: true
           role-skip-session-tagging: true
 
-      - name: Install Session Manager plugin
-        run: |
-          curl -sSO "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb"
-          sudo dpkg -i session-manager-plugin.deb
-          session-manager-plugin --version
+      - uses: hashicorp/setup-terraform@v4
 
-      - name: Find running task
-        id: task
+      - name: Terraform init
         run: |
-          TASK_ARN=$(aws ecs list-tasks \
-            --cluster "$CLUSTER" \
-            --service-name "${{ inputs.service }}" \
-            --region "$AWS_REGION" \
-            --query 'taskArns[0]' \
+          terraform init \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="key=build/test/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="use_lockfile=true"
+        env:
+          TF_VAR_workload_account_state_bucket: ${{ secrets.TF_BOOTSTRAP_STATE_BUCKET }}
+
+      - name: Run db-tools backup
+        run: |
+          TASK_DEF=$(terraform output -raw db_tools_task_definition_arn)
+          SUBNETS=$(terraform output -json private_app_subnet_ids | jq -r 'join(",")')
+          SG=$(terraform output -raw ecs_tasks_sg_id)
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster amster2k2x-test \
+            --task-definition "$TASK_DEF" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SG],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"db-tools","command":["/scripts/backup.sh"]}]}' \
+            --query 'tasks[0].taskArn' \
             --output text)
 
-          if [ "$TASK_ARN" = "None" ] || [ -z "$TASK_ARN" ]; then
-            echo "::error::No running task found for service '${{ inputs.service }}'. Is the test environment up?"
+          echo "Backup task: $TASK_ARN"
+          aws ecs wait tasks-stopped --cluster amster2k2x-test --tasks "$TASK_ARN"
+
+          DETAILS=$(aws ecs describe-tasks \
+            --cluster amster2k2x-test \
+            --tasks "$TASK_ARN" \
+            --query 'tasks[0].{stopCode:stopCode,stoppedReason:stoppedReason,containers:containers[*].{name:name,exitCode:exitCode,reason:reason}}' \
+            --output json)
+          echo "$DETAILS"
+
+          EXIT_CODE=$(echo "$DETAILS" | jq -r '.containers[0].exitCode')
+
+          if [ "$EXIT_CODE" = "null" ] || [ "$EXIT_CODE" != "0" ]; then
+            echo "::error::db-tools backup failed — exitCode: $EXIT_CODE"
             exit 1
           fi
 
-          echo "arn=$TASK_ARN" >> $GITHUB_OUTPUT
-
-      - name: Dump directly from container to runner and upload
+      - name: Verify backups exist in S3
         run: |
-          SVC="${{ inputs.service }}"
-          TASK="${{ steps.task.outputs.arn }}"
-          BUCKET="amster2k2x-${BUCKET_ENV}-golden-backups"
+          BUCKET=$(terraform output -raw backups_bucket_name)
 
-          echo "Streaming deep database backup from ECS to the runner..."
-          
-          # 1. Added '--schema=public' to explicitly target your application tables
-          # 2. Added '--verbose' to help us see exactly what pg_dump is doing
-          aws ecs execute-command \
-            --cluster "$CLUSTER" \
-            --task "$TASK" \
-            --container postgres \
-            --region "$AWS_REGION" \
-            --interactive \
-            --command "sh -c 'PGPASSWORD=\"test-only-not-secret\" pg_dump --format=plain --schema=public --clean --if-exists -U $SVC -d $SVC'" > /tmp/raw_backup.dump
+          aws s3 ls "s3://${BUCKET}/panel_latest.dump" \
+            && echo "panel_latest.dump ✓" \
+            || { echo "::error::panel_latest.dump missing"; exit 1; }
 
-          echo "Cleaning up AWS SSM terminal noise from the file..."
-          sed -i '/Starting session\|SessionId\|Exiting session/d' /tmp/raw_backup.dump
+          aws s3 ls "s3://${BUCKET}/bot_latest.dump" \
+            && echo "bot_latest.dump ✓" \
+            || { echo "::error::bot_latest.dump missing"; exit 1; }
 
-          echo "Uploading clean file to S3..."
-          aws s3 cp /tmp/raw_backup.dump "s3://$BUCKET/$SVC/latest.dump" --region "$AWS_REGION"
-
-      - name: Verify upload
+      - name: Summary
         run: |
-          SVC="${{ inputs.service }}"
-          BUCKET="amster2k2x-${BUCKET_ENV}-golden-backups"
-          
-          echo "Checking if file exists in S3..."
-          aws s3 ls "s3://$BUCKET/$SVC/latest.dump"
-
-          echo "Sanity-checking the dump file structure..."
-          # Download the first 20 lines to make sure it looks like a real SQL dump
-          FIRST_LINES=$(aws s3 cp "s3://$BUCKET/$SVC/latest.dump" - | head -20)
-          
-          if echo "$FIRST_LINES" | grep -qi "PostgreSQL database dump"; then
-            echo "::notice::Success! Valid PostgreSQL dump detected."
-          else
-            echo "::error::Dump file does not look like a valid SQL backup."
-            exit 1
-          fi
+          BUCKET=$(terraform output -raw backups_bucket_name)
+          echo "### Manual backup complete" >> $GITHUB_STEP_SUMMARY
+          echo "| File | Bucket |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| panel_latest.dump | $BUCKET |" >> $GITHUB_STEP_SUMMARY
+          echo "| bot_latest.dump   | $BUCKET |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "These will be restored on the next \`deploy-test.yml\` run." >> $GITHUB_STEP_SUMMARY
