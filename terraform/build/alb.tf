@@ -200,7 +200,7 @@ resource "aws_lb_target_group" "sub_page" {
   deregistration_delay = 30
 
   health_check {
-    path                = "/health"
+    path                = "/internal/health"
     healthy_threshold   = 2
     unhealthy_threshold = 3
     interval            = 30
