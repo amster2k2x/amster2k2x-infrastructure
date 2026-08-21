@@ -63,6 +63,7 @@ resource "aws_ecs_task_definition" "bot" {
         { name = "TELEGRAM_OIDC_CLIENT_ID",        value = "8029977831" },
 
         # Webhook — public URL Telegram calls back to
+        { name = "WEBHOOK_URL", value = "https://bot.${local.base_hostname}" },
         { name = "WEBHOOK_PATH", value = "/webhook" },
 
         # Web API (cabinet backend on same port)
