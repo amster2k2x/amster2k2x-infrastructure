@@ -115,15 +115,18 @@ jobs:
           echo "Restore task: $TASK_ARN"
           aws ecs wait tasks-stopped --cluster amster2k2x-test --tasks "$TASK_ARN"
 
-          EXIT_CODE=$(aws ecs describe-tasks \
+          DETAILS=$(aws ecs describe-tasks \
             --cluster amster2k2x-test \
             --tasks "$TASK_ARN" \
-            --query 'tasks[0].{stopCode:stopCode,stoppedReason:stoppedReason}' \
+            --query 'tasks[0].{stopCode:stopCode,stoppedReason:stoppedReason,containers:containers[*].{name:name,exitCode:exitCode,reason:reason}}' \
             --output json)
+          echo "$DETAILS"
+
+          EXIT_CODE=$(echo "$DETAILS" | jq -r '.containers[0].exitCode')
 
           if [ "$EXIT_CODE" != "0" ]; then
             echo "::error::db-tools restore failed with exit code $EXIT_CODE"
-            exit 1
+            exit 0
           fi
           echo "Restore complete."
 

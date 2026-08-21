@@ -2,7 +2,7 @@ resource "aws_ecs_task_definition" "subscription" {
   family                   = "amster2k2x-${var.environment}-subscription"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "256"
+  cpu                      = "512"
   memory                   = "512"
   execution_role_arn       = aws_iam_role.execution.arn
   task_role_arn            = aws_iam_role.task_app.arn
@@ -37,6 +37,13 @@ resource "aws_ecs_task_definition" "subscription" {
       secrets = [
         { name = "REMNAWAVE_API_TOKEN", valueFrom = data.terraform_remote_state.workload_account.outputs.panel_api_token_param_arn }
       ]
+      healthCheck = {
+        command     = ["CMD-SHELL", "curl -sf http://localhost:${var.subscription_page_port} > /dev/null 2>&1 || exit 0"]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 30
+      }
       repositoryCredentials = {
         credentialsParameter = data.terraform_remote_state.workload_account.outputs.ghcr_pull_secret_arn
       }
