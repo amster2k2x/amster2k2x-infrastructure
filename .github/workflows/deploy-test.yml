@@ -178,7 +178,7 @@ jobs:
 
       - name: Wait for ECS services to be stable
         run: |
-          for svc in panel bot-worker cabinet subscription node; do
+          for svc in panel bot cabinet subscription node; do
             echo "Waiting for $svc..."
             aws ecs wait services-stable \
               --cluster amster2k2x-test \
