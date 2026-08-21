@@ -75,7 +75,8 @@ resource "aws_ecs_task_definition" "bot" {
       secrets = [
         {
           name      = "POSTGRES_PASSWORD"
-          valueFrom = aws_secretsmanager_secret.rds_master.arn  # master password from data-tier.tf
+          valueFrom = "${aws_secretsmanager_secret.rds_master.arn}:password::"
+                                                                  # ↑ extracts only the password field
         },
         {
           name      = "BOT_TOKEN"
