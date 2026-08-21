@@ -68,6 +68,11 @@ resource "aws_ecs_service" "subscription" {
   platform_version       = "LATEST"
   enable_execute_command = true  # add
 
+  depends_on = [
+    aws_lb_listener.https,
+    aws_ecs_service.panel # Wait for panel to reach steady state first
+  ]
+
   network_configuration {
     subnets          = aws_subnet.private_app[*].id
     security_groups  = [aws_security_group.ecs_tasks.id]
