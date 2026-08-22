@@ -49,6 +49,10 @@ jobs:
     defaults:
       run:
         working-directory: terraform/build
+    outputs:
+      monthly_cost: ${{ steps.cost.outputs.monthly_cost }}
+      hourly_cost:  ${{ steps.cost.outputs.hourly_cost }}
+
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -91,6 +95,41 @@ jobs:
             -backend-config="use_lockfile=true"
         env:
           TF_VAR_workload_account_state_bucket: ${{ secrets.TF_BOOTSTRAP_STATE_BUCKET }}
+
+      # Plan first — apply uses this exact plan, and infracost reads the JSON
+      - name: Terraform plan
+        run: |
+          terraform plan -out=tfplan
+          terraform show -json tfplan > /tmp/plan.json
+        env:
+          TF_VAR_workload_account_state_bucket: ${{ secrets.TF_BOOTSTRAP_STATE_BUCKET }}
+
+      - name: Setup Infracost
+        uses: infracost/actions/setup@e9d6e6cd65e168e76b0de50ff9957d2fe8bb1832 # v4.2.0
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
+
+      - name: Infracost cost estimate
+        id: cost
+        run: |
+          infracost breakdown \
+            --path /tmp/plan.json \
+            --format json \
+            --out-file /tmp/infracost.json
+
+          # Extract monthly cost and compute hourly
+          MONTHLY=$(jq -r '.totalMonthlyCost // "0"' /tmp/infracost.json \
+            | awk '{printf "%.2f", $1}')
+          HOURLY=$(echo "$MONTHLY" | awk '{printf "%.3f", $1/730}')
+
+          echo "monthly_cost=$MONTHLY" >> $GITHUB_OUTPUT
+          echo "hourly_cost=$HOURLY"   >> $GITHUB_OUTPUT
+
+          # Print full table to step summary
+          echo "### 💰 Infracost Estimate" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          infracost output --path /tmp/infracost.json --format table >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Terraform apply
         run: terraform apply -auto-approve
@@ -192,8 +231,17 @@ jobs:
             && echo "Panel OK"
           curl -sf "https://sub.test.amster2k2x.mywire.org/"   -o /dev/null \
             && echo "Sub page OK"
-          curl -sf "https://bot.test.amster2k2x.mywire.org/"   -o /dev/null \
-            && echo "Bot OK"
+          curl -sf "https://cabinet.test.amster2k2x.mywire.org/"   -o /dev/null \
+            && echo "Cabinet OK"
+
+      - name: Print environment summary
+        run: |
+          echo "### 🚀 Test Environment Running" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | URL |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-----|" >> $GITHUB_STEP_SUMMARY
+          echo "| Panel   | https://panel.test.amster2k2x.mywire.org |" >> $GITHUB_STEP_SUMMARY
+          echo "| Sub page| https://sub.test.amster2k2x.mywire.org   |" >> $GITHUB_STEP_SUMMARY
+          echo "| Cabinet | https://cabinet.test.amster2k2x.mywire.org   |" >> $GITHUB_STEP_SUMMARY
 
       - name: Print environment URLs
         if: ${{ inputs.auto_destroy == false }}
@@ -203,12 +251,169 @@ jobs:
           echo "|---------|-----|" >> $GITHUB_STEP_SUMMARY
           echo "| Panel   | https://panel.test.amster2k2x.mywire.org |" >> $GITHUB_STEP_SUMMARY
           echo "| Sub page| https://sub.test.amster2k2x.mywire.org   |" >> $GITHUB_STEP_SUMMARY
-          echo "| Cabinet | https://bot.test.amster2k2x.mywire.org   |" >> $GITHUB_STEP_SUMMARY
+          echo "| Cabinet | https://cabinet.test.amster2k2x.mywire.org   |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Run **destroy-test.yml** when done." >> $GITHUB_STEP_SUMMARY
 
-      - name: Terraform destroy
-        if: always() && inputs.auto_destroy
+      # ── auto_destroy path: no approval, destroy immediately ──────
+      - name: Run db-tools backup (auto-destroy)
+        if: ${{ inputs.auto_destroy }}
+        run: |
+          TASK_DEF=$(terraform output -raw db_tools_task_definition_arn)
+          SUBNETS=$(terraform output -json private_app_subnet_ids | jq -r 'join(",")')
+          SG=$(terraform output -raw ecs_tasks_sg_id)
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster amster2k2x-test \
+            --task-definition "$TASK_DEF" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SG],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"db-tools","command":["/scripts/backup.sh"]}]}' \
+            --query 'tasks[0].taskArn' \
+            --output text)
+
+          echo "Backup task: $TASK_ARN"
+          aws ecs wait tasks-stopped --cluster amster2k2x-test --tasks "$TASK_ARN"
+
+      - name: Terraform destroy (auto)
+        if: ${{ inputs.auto_destroy }}
         run: terraform destroy -auto-approve
         env:
           TF_VAR_workload_account_state_bucket: ${{ secrets.TF_BOOTSTRAP_STATE_BUCKET }}
+
+  # ─────────────────────────────────────────────────────────────────
+  # JOB 2 — Telegram notification (manual-review path only)
+  # ─────────────────────────────────────────────────────────────────
+  notify:
+    needs: deploy
+    if: ${{ !inputs.auto_destroy && needs.deploy.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Telegram — environment ready for review
+        uses: appleboy/telegram-action@214f06cfa3d3a588c1472116889437e7c6fd29b1 # v1.1.1
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message_thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
+          format: html
+          message: |
+            🚀 <b>Test Environment Ready for Review</b>
+
+            <b>Services:</b>
+            • 🖥 <a href="https://panel.test.amster2k2x.mywire.org">Panel</a>
+            • 📄 <a href="https://sub.test.amster2k2x.mywire.org">Subscription Page</a>
+            • 📱 <a href="https://bot.test.amster2k2x.mywire.org">Cabinet</a>
+
+            💰 <b>Running cost:</b> ~$${{ needs.deploy.outputs.monthly_cost }}/mo (~$${{ needs.deploy.outputs.hourly_cost }}/hr)
+
+            ✅ <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">Approve teardown in GitHub Actions</a>
+
+  # ─────────────────────────────────────────────────────────────────
+  # JOB 3 — Approval gate (manual-review path only)
+  # Configured in GitHub: Settings → Environments → test-gate
+  # Add yourself as a required reviewer there.
+  # ─────────────────────────────────────────────────────────────────
+  await-approval:
+    needs: notify
+    if: ${{ !inputs.auto_destroy }}
+    runs-on: ubuntu-latest
+    environment: test-gate
+    steps:
+      - name: Teardown approved
+        run: echo "✅ Teardown approved by ${{ github.actor }}"
+
+  # ─────────────────────────────────────────────────────────────────
+  # JOB 4 — Backup + destroy + confirmation (manual-review path only)
+  # ─────────────────────────────────────────────────────────────────
+  teardown:
+    needs: await-approval
+    if: ${{ !inputs.auto_destroy }}
+    runs-on: ubuntu-latest
+    environment: test
+    defaults:
+      run:
+        working-directory: terraform/build
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+
+      - name: Assume cicd-runner hub role
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6
+        with:
+          role-to-assume: ${{ secrets.AWS_HUB_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-hub
+
+      - name: Assume test-account deploy role
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-test-teardown
+          role-chaining: true
+          role-skip-session-tagging: true
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4
+
+      - name: Terraform init
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="key=build/test/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="use_lockfile=true"
+        env:
+          TF_VAR_workload_account_state_bucket: ${{ secrets.TF_BOOTSTRAP_STATE_BUCKET }}
+
+      - name: Run db-tools backup
+        run: |
+          TASK_DEF=$(terraform output -raw db_tools_task_definition_arn)
+          SUBNETS=$(terraform output -json private_app_subnet_ids | jq -r 'join(",")')
+          SG=$(terraform output -raw ecs_tasks_sg_id)
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster amster2k2x-test \
+            --task-definition "$TASK_DEF" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SG],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"db-tools","command":["/scripts/backup.sh"]}]}' \
+            --query 'tasks[0].taskArn' \
+            --output text)
+
+          echo "Backup task: $TASK_ARN"
+          aws ecs wait tasks-stopped --cluster amster2k2x-test --tasks "$TASK_ARN"
+
+          DETAILS=$(aws ecs describe-tasks \
+            --cluster amster2k2x-test \
+            --tasks "$TASK_ARN" \
+            --query 'tasks[0].{stopCode:stopCode,stoppedReason:stoppedReason,containers:containers[*].{name:name,exitCode:exitCode,reason:reason}}' \
+            --output json)
+          echo "$DETAILS"
+
+          EXIT_CODE=$(echo "$DETAILS" | jq -r '.containers[0].exitCode')
+          if [ "$EXIT_CODE" = "null" ] || [ "$EXIT_CODE" != "0" ]; then
+            echo "::error::db-tools backup failed before destroy — exitCode: $EXIT_CODE"
+            exit 1
+          fi
+          echo "Backup complete — safe to destroy."
+
+      - name: Terraform destroy
+        run: terraform destroy -auto-approve
+        env:
+          TF_VAR_workload_account_state_bucket: ${{ secrets.TF_BOOTSTRAP_STATE_BUCKET }}
+
+      - name: Send Telegram — environment destroyed
+        if: always()
+        uses: appleboy/telegram-action@214f06cfa3d3a588c1472116889437e7c6fd29b1 # v1.1.1
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message_thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
+          format: html
+          message: |
+            ${{ job.status == 'success' && '🗑️ <b>Test Environment Torn Down</b>' || '❌ <b>Teardown Failed</b>' }}
+
+            • Backup saved ✓
+            • Infrastructure destroyed ${{ job.status == 'success' && '✓' || '✗' }}
+            • Approved by: ${{ github.actor }}
+
+            🔗 <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">View run</a>
