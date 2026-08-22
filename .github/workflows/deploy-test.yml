@@ -174,6 +174,29 @@ jobs:
           fi
           echo "Restore complete."
 
+      - name: Start app services
+        run: |
+          CLUSTER="amster2k2x-test"
+          # Bring up Panel and Bot — they now start against a fully restored DB,
+          # so their migration logic runs against real data, not an empty schema.
+          for SERVICE in panel bot-worker; do
+            aws ecs update-service \
+              --cluster "$CLUSTER" \
+              --service "$SERVICE" \
+              --desired-count 1 \
+              --no-cli-pager
+            echo "Started $SERVICE"
+          done
+
+          # Wait for both services to reach steady state before smoke tests
+          echo "Waiting for panel stability..."
+          aws ecs wait services-stable --cluster "$CLUSTER" --services panel
+
+          echo "Waiting for bot-worker stability..."
+          aws ecs wait services-stable --cluster "$CLUSTER" --services bot-worker
+
+          echo "All services stable."
+
       - name: Update Dynu DNS — point ALB subdomains at the new ALB
         run: |
           ALB_DNS=$(terraform output -raw alb_dns_name)
@@ -230,14 +253,15 @@ jobs:
               --region "${{ env.AWS_REGION }}"
           done
 
+          echo "Waiting 300s for ECS services to stabilize..."
+          sleep 300
+
       - name: Smoke tests
         run: |
           curl -sf "https://panel.test.amster2k2x.mywire.org/" -o /dev/null \
             && echo "Panel OK"
-          curl -sf "https://sub.test.amster2k2x.mywire.org/"   -o /dev/null \
-            && echo "Sub page OK"
-          curl -sf "https://cabinet.test.amster2k2x.mywire.org/"   -o /dev/null \
-            && echo "Cabinet OK"
+          curl -sf "https://bot.test.amster2k2x.mywire.org/"   -o /dev/null \
+            && echo "Bot OK"
 
       - name: Print environment summary
         run: |

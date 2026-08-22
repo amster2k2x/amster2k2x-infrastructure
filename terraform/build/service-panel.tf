@@ -99,7 +99,7 @@ resource "aws_ecs_service" "panel" {
   name                   = "panel"
   cluster                = aws_ecs_cluster.main.id
   task_definition        = aws_ecs_task_definition.panel.arn
-  desired_count          = 1
+  desired_count          = 0 # workflow brings it up after restore
   launch_type            = "FARGATE"
   platform_version       = "LATEST"
   enable_execute_command = true
