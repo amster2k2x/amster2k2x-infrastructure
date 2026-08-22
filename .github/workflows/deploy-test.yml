@@ -6,18 +6,23 @@ on:
       panel_backend_image:
         required: true
         type: string
+        default: ghcr.io/amster2k2x/remnawave-backend:latest
       bot_worker_image:
         required: true
         type: string
+        default: ghcr.io/amster2k2x/remnawave-bedolaga-telegram-bot:latest
       cabinet_image:
         required: true
         type: string
+        default: ghcr.io/amster2k2x/remnawave-bedolaga-cabinet:latest
       subscription_page_image:
         required: true
         type: string
+        default: ghcr.io/amster2k2x/remnawave-subscription-page:latest
       node_image:
         required: true
         type: string
+        default: ghcr.io/amster2k2x/remnawave-node:latest
       db_tools_image:        # has a default in variables.tf but explicit is better
         required: false
         type: string
