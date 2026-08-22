@@ -244,3 +244,36 @@ jobs:
       security-events: write
     uses: ./.github/workflows/build-and-push-rw-node.yml
     secrets: inherit
+
+  # ── Runs after all builds complete. Skips if all builds were skipped.
+  # Fails if any triggered build failed (don't deploy broken images).
+  deploy-test:
+    needs:
+      - trigger-bot-build
+      - trigger-cabinet-build
+      - trigger-subscription-page-build
+      - trigger-remnawave-backend-build
+      - trigger-remnawave-node-build
+      # trigger-remnawave-frontend-build excluded — frontend is a build
+      # artifact bundled inside the backend image, not a standalone service.
+    if: |
+      always() &&
+      (
+        needs.trigger-bot-build.result == 'success' ||
+        needs.trigger-cabinet-build.result == 'success' ||
+        needs.trigger-subscription-page-build.result == 'success' ||
+        needs.trigger-remnawave-backend-build.result == 'success' ||
+        needs.trigger-remnawave-node-build.result == 'success'
+      ) &&
+      needs.trigger-bot-build.result != 'failure' &&
+      needs.trigger-cabinet-build.result != 'failure' &&
+      needs.trigger-subscription-page-build.result != 'failure' &&
+      needs.trigger-remnawave-backend-build.result != 'failure' &&
+      needs.trigger-remnawave-node-build.result != 'failure'
+    permissions:
+      id-token: write
+      contents: read
+    uses: ./.github/workflows/deploy-test.yml
+    with:
+      auto_destroy: false   # automated runs not destroy — manual review gate
+    secrets: inherit

@@ -33,6 +33,40 @@ on:
         type: boolean
         default: true
 
+  # Called automatically by upstream-sync.yml after successful builds.
+  # All inputs are optional here — defaults point to :latest which is
+  # exactly what was just pushed by the build jobs.
+  workflow_call:
+    inputs:
+      panel_backend_image:
+        required: false
+        type: string
+        default: ghcr.io/amster2k2x/remnawave-backend:latest
+      bot_worker_image:
+        required: false
+        type: string
+        default: ghcr.io/amster2k2x/remnawave-bedolaga-telegram-bot:latest
+      cabinet_image:
+        required: false
+        type: string
+        default: ghcr.io/amster2k2x/remnawave-bedolaga-cabinet:latest
+      subscription_page_image:
+        required: false
+        type: string
+        default: ghcr.io/amster2k2x/remnawave-subscription-page:latest
+      node_image:
+        required: false
+        type: string
+        default: ghcr.io/amster2k2x/remnawave-node:latest
+      db_tools_image:
+        required: false
+        type: string
+        default: ghcr.io/amster2k2x/db-tools:latest
+      auto_destroy:
+        required: false
+        type: boolean
+        default: true
+
 permissions:
   id-token: write
   contents: read
