@@ -270,7 +270,7 @@ jobs:
           echo "|---------|-----|" >> $GITHUB_STEP_SUMMARY
           echo "| Panel   | https://panel.test.amster2k2x.mywire.org |" >> $GITHUB_STEP_SUMMARY
           echo "| Sub page| https://sub.test.amster2k2x.mywire.org   |" >> $GITHUB_STEP_SUMMARY
-          echo "| Cabinet | https://cabinet.test.amster2k2x.mywire.org   |" >> $GITHUB_STEP_SUMMARY
+          echo "| Bot | https://bot.test.amster2k2x.mywire.org   |" >> $GITHUB_STEP_SUMMARY
 
       - name: Print environment URLs
         if: ${{ inputs.auto_destroy == false }}
@@ -280,7 +280,7 @@ jobs:
           echo "|---------|-----|" >> $GITHUB_STEP_SUMMARY
           echo "| Panel   | https://panel.test.amster2k2x.mywire.org |" >> $GITHUB_STEP_SUMMARY
           echo "| Sub page| https://sub.test.amster2k2x.mywire.org   |" >> $GITHUB_STEP_SUMMARY
-          echo "| Cabinet | https://cabinet.test.amster2k2x.mywire.org   |" >> $GITHUB_STEP_SUMMARY
+          echo "| Bot | https://bot.test.amster2k2x.mywire.org   |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Run **destroy-test.yml** when done." >> $GITHUB_STEP_SUMMARY
 
@@ -331,7 +331,7 @@ jobs:
             <b>Services:</b>
             • 🖥 <a href="https://panel.test.amster2k2x.mywire.org">Panel</a>
             • 📄 <a href="https://sub.test.amster2k2x.mywire.org">Subscription Page</a>
-            • 📱 <a href="https://bot.test.amster2k2x.mywire.org">Cabinet</a>
+            • 📱 <a href="https://bot.test.amster2k2x.mywire.org">Bot</a>
 
             💰 <b>Running cost:</b> ~$${{ needs.deploy.outputs.monthly_cost }}/mo (~$${{ needs.deploy.outputs.hourly_cost }}/hr)
 
