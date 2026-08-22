@@ -23,7 +23,7 @@ jobs:
       synced: ${{ steps.sync.outputs.has_new_commits }}
     steps:
       - name: Checkout target repo
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: amster2k2x/remnawave-bedolaga-telegram-bot
           token: ${{ secrets.PAT_TOKEN }}
@@ -31,9 +31,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      # use instead of aormsby/Fork-Sync-With-Upstream-action@v3.4.3 because it supports remote repos
       - name: Sync bot fork with upstream
         id: sync
-        uses: silvzr/Fork-Sync-With-Upstream-action@v3.4.3 # use instead of aormsby/Fork-Sync-With-Upstream-action@v3.4.3 because it supports remote repos
+        uses: silvzr/Fork-Sync-With-Upstream-action@64c72154809503219edfa70e03f61dc11bfe68d0 # v3.4.3
         with:
           upstream_sync_repo: BEDOLAGA-DEV/bedolaga-telegram-bot
           upstream_sync_branch: main
@@ -49,7 +50,7 @@ jobs:
       synced: ${{ steps.sync.outputs.has_new_commits }}
     steps:
       - name: Checkout target repo
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: amster2k2x/bedolaga-cabinet
           token: ${{ secrets.PAT_TOKEN }}
@@ -59,7 +60,7 @@ jobs:
 
       - name: Sync cabinet fork with upstream
         id: sync
-        uses: silvzr/Fork-Sync-With-Upstream-action@v3.4.3 # use instead of aormsby/Fork-Sync-With-Upstream-action@v3.4.3 because it supports remote repos
+        uses: silvzr/Fork-Sync-With-Upstream-action@64c72154809503219edfa70e03f61dc11bfe68d0 # v3.4.3
         with:
           upstream_sync_repo: BEDOLAGA-DEV/bedolaga-cabinet
           upstream_sync_branch: main
@@ -75,7 +76,7 @@ jobs:
       synced: ${{ steps.sync.outputs.has_new_commits }}
     steps:
       - name: Checkout target repo
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: amster2k2x/remnawave-subscription-page
           token: ${{ secrets.PAT_TOKEN }}
@@ -85,7 +86,7 @@ jobs:
           
       - name: Sync subscription-page fork with upstream
         id: sync
-        uses: silvzr/Fork-Sync-With-Upstream-action@v3.4.3 # use instead of aormsby/Fork-Sync-With-Upstream-action@v3.4.3 because it supports remote repos
+        uses: silvzr/Fork-Sync-With-Upstream-action@64c72154809503219edfa70e03f61dc11bfe68d0 # v3.4.3
         with:
           upstream_sync_repo: remnawave/subscription-page
           upstream_sync_branch: main
@@ -101,7 +102,7 @@ jobs:
       synced: ${{ steps.sync.outputs.has_new_commits }}
     steps:
       - name: Checkout target repo
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: amster2k2x/remnawave-backend
           token: ${{ secrets.PAT_TOKEN }}
@@ -111,7 +112,7 @@ jobs:
           
       - name: Sync remnawave-backend fork with upstream
         id: sync
-        uses: silvzr/Fork-Sync-With-Upstream-action@v3.4.3 # use instead of aormsby/Fork-Sync-With-Upstream-action@v3.4.3 because it supports remote repos
+        uses: silvzr/Fork-Sync-With-Upstream-action@64c72154809503219edfa70e03f61dc11bfe68d0 # v3.4.3
         with:
           upstream_sync_repo: remnawave/backend
           upstream_sync_branch: main
@@ -127,7 +128,7 @@ jobs:
       synced: ${{ steps.sync.outputs.has_new_commits }}
     steps:
       - name: Checkout target repo
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: amster2k2x/remnawave-frontend
           token: ${{ secrets.PAT_TOKEN }}
@@ -137,7 +138,7 @@ jobs:
           
       - name: Sync remnawave-frontend fork with upstream
         id: sync
-        uses: silvzr/Fork-Sync-With-Upstream-action@v3.4.3 # use instead of aormsby/Fork-Sync-With-Upstream-action@v3.4.3 because it supports remote repos
+        uses: silvzr/Fork-Sync-With-Upstream-action@64c72154809503219edfa70e03f61dc11bfe68d0 # v3.4.3
         with:
           upstream_sync_repo: remnawave/frontend
           upstream_sync_branch: main
@@ -153,7 +154,7 @@ jobs:
       synced: ${{ steps.sync.outputs.has_new_commits }}
     steps:
       - name: Checkout target repo
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: amster2k2x/remnawave-node
           token: ${{ secrets.PAT_TOKEN }}
@@ -163,7 +164,7 @@ jobs:
           
       - name: Sync remnawave-node fork with upstream
         id: sync
-        uses: silvzr/Fork-Sync-With-Upstream-action@v3.4.3 # use instead of aormsby/Fork-Sync-With-Upstream-action@v3.4.3 because it supports remote repos
+        uses: silvzr/Fork-Sync-With-Upstream-action@64c72154809503219edfa70e03f61dc11bfe68d0 # v3.4.3
         with:
           upstream_sync_repo: remnawave/node
           upstream_sync_branch: main
