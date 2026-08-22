@@ -179,7 +179,7 @@ jobs:
           CLUSTER="amster2k2x-test"
           # Bring up Panel and Bot — they now start against a fully restored DB,
           # so their migration logic runs against real data, not an empty schema.
-          for SERVICE in panel bot-worker; do
+          for SERVICE in panel bot; do
             aws ecs update-service \
               --cluster "$CLUSTER" \
               --service "$SERVICE" \
@@ -192,8 +192,8 @@ jobs:
           echo "Waiting for panel stability..."
           aws ecs wait services-stable --cluster "$CLUSTER" --services panel
 
-          echo "Waiting for bot-worker stability..."
-          aws ecs wait services-stable --cluster "$CLUSTER" --services bot-worker
+          echo "Waiting for bot stability..."
+          aws ecs wait services-stable --cluster "$CLUSTER" --services bot
 
           echo "All services stable."
 
