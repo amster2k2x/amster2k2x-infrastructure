@@ -1,0 +1,86 @@
+name: Deploy Nodes to Prod (rolling)
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Node image tag'
+        required: false
+        default: 'latest'
+  workflow_call:
+    inputs:
+      image_tag:
+        required: false
+        type: string
+        default: 'latest'
+
+permissions:
+  contents: read
+
+jobs:
+  notify-start:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: appleboy/telegram-action@214f06cfa3d3a588c1472116889437e7c6fd29b1
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message_thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
+          format: html
+          message: |
+            🔄 <b>Node Fleet Deploy Started</b>
+            <b>Strategy:</b> Rolling (sequential)
+            <b>Tag:</b> <code>${{ inputs.image_tag || 'latest' }}</code>
+
+  # Each node is a separate job so failures are per-node
+  # and don't block unrelated nodes. Add/remove nodes here.
+  node-01:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: webfactory/ssh-agent@dc588b651fe13d2e1f1c64f4e63c41e5e7e1aac4
+        with:
+          ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
+      - run: ssh-keyscan -T 10 -H ${{ secrets.PROD_NODE_01_HOST }} >> ~/.ssh/known_hosts
+      - name: Deploy node-01
+        run: |
+          ssh deploy@${{ secrets.PROD_NODE_01_HOST }} \
+            "cd /opt/remnawave/node && \
+            export IMAGE_TAG=${{ inputs.image_tag }} && \
+            docker compose pull remnanode && \
+            docker compose up -d --no-deps --force-recreate remnanode"
+
+  node-02:
+    runs-on: ubuntu-latest
+    needs: node-01   # sequential — one node at a time
+    timeout-minutes: 10
+    steps:
+      - uses: webfactory/ssh-agent@dc588b651fe13d2e1f1c64f4e63c41e5e7e1aac4
+        with:
+          ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
+      - run: ssh-keyscan -T 10 -H ${{ secrets.PROD_NODE_02_HOST }} >> ~/.ssh/known_hosts
+      - name: Deploy node-02
+        run: |
+          ssh deploy@${{ secrets.PROD_NODE_02_HOST }} \
+            "cd /opt/remnawave/node && \
+            export IMAGE_TAG=${{ inputs.image_tag }} && \
+            docker compose pull remnanode && \
+            docker compose up -d --no-deps --force-recreate remnanode"
+
+  # ... repeat for node-03 through node-10, each needs: the previous
+
+  notify-result:
+    runs-on: ubuntu-latest
+    needs: [node-01, node-02]  # list all node jobs here
+    if: always()
+    steps:
+      - uses: appleboy/telegram-action@214f06cfa3d3a588c1472116889437e7c6fd29b1
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message_thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
+          format: html
+          message: |
+            ${{ contains(needs.*.result, 'failure') && '❌ <b>Node Fleet Deploy — Some Nodes Failed</b>' || '✅ <b>Node Fleet Deploy Succeeded</b>' }}
+            <b>Tag:</b> <code>${{ inputs.image_tag || 'latest' }}</code>
+            🔗 <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">View Run</a>

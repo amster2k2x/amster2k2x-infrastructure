@@ -1,0 +1,65 @@
+name: Deploy Bot + Cabinet to Prod (blue-green)
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Bot image tag to deploy'
+        required: false
+        default: 'latest'
+      cabinet_tag:
+        description: 'Cabinet image tag to deploy'
+        required: false
+        default: 'latest'
+  workflow_call:
+    inputs:
+      image_tag:
+        required: false
+        type: string
+        default: 'latest'
+      cabinet_tag:
+        required: false
+        type: string
+        default: 'latest'
+
+permissions:
+  contents: read
+
+jobs:
+  # Bot worker blue-green
+  deploy-bot:
+    uses: ./.github/workflows/deploy-prod-apps-template.yml
+    with:
+      ssh_host_secret: PROD_BOT_VPS_HOST
+      service_name: remnawave-bot
+      display_name: Bedolaga Bot Worker
+      compose_file: docker-compose-bot.yml
+      deploy_dir: /opt/remnawave/bot
+      blue_port: '8080'
+      green_port: '8081'
+      health_path: '/health'
+      # health_header passed via secret — see note below
+      nginx_upstream_blue: 'remnawave-bedolaga-telegram-bot-blue'
+      nginx_upstream_green: 'remnawave-bedolaga-telegram-bot-green'
+      nginx_config_path: /etc/nginx/conf.d/bot.conf
+      image_tag: ${{ inputs.image_tag || 'latest' }}
+    secrets: inherit
+
+  # Cabinet (bot-account) blue-green — runs after bot succeeds
+  deploy-cabinet:
+    needs: deploy-bot
+    uses: ./.github/workflows/deploy-prod-apps-template.yml
+    with:
+      ssh_host_secret: PROD_BOT_VPS_HOST
+      service_name: remnawave-bot-account
+      display_name: Bedolaga Cabinet (MiniApp)
+      compose_file: docker-compose-bot.yml
+      deploy_dir: /opt/remnawave/bot
+      blue_port: '4080'
+      green_port: '4081'
+      health_path: '/'
+      nginx_upstream_blue: 'bot_account-blue'
+      nginx_upstream_green: 'bot_account-green'
+      nginx_config_path: /etc/nginx/conf.d/bot.conf
+      image_tag: ${{ inputs.cabinet_tag || 'latest' }}
+    secrets: inherit

@@ -62,6 +62,10 @@ on:
         required: false
         type: string
         default: frontend/dist
+    outputs:
+      version:
+        description: 'Semver extracted from version file'
+        value: ${{ jobs.merge-manifests.outputs.version }}
 
 permissions:
   contents: read

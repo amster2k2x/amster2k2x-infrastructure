@@ -1,0 +1,30 @@
+name: Deploy Subscription Page to Prod
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Subscription page image tag'
+        required: false
+        default: 'latest'
+  workflow_call:
+    inputs:
+      image_tag:
+        required: false
+        type: string
+        default: 'latest'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/deploy-prod-sub-node-template.yml
+    with:
+      ssh_host_secret: PROD_BOT_VPS_HOST
+      service_name: remnawave-subscription-page
+      display_name: Subscription Page
+      compose_file: docker-compose-bot.yml
+      deploy_dir: /opt/remnawave/bot
+      image_tag: ${{ inputs.image_tag || 'latest' }}
+    secrets: inherit

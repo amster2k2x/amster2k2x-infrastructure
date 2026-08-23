@@ -277,3 +277,70 @@ jobs:
     with:
       auto_destroy: false   # automated runs not destroy — manual review gate
     secrets: inherit
+
+  deploy-prod-panel:
+    needs:
+      - deploy-test
+      - trigger-remnawave-backend-build
+    if: |
+      always() &&
+      needs.deploy-test.result == 'success' &&
+      needs.trigger-remnawave-backend-build.result == 'success'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/deploy-prod-panel.yml
+    with:
+      image_tag: ${{ needs.trigger-remnawave-backend-build.outputs.version }}
+    secrets: inherit
+
+  deploy-prod-bot:
+    needs:
+      - deploy-test
+      - trigger-bot-build
+      - trigger-cabinet-build
+    if: |
+      always() &&
+      needs.deploy-test.result == 'success' &&
+      (
+        needs.trigger-bot-build.result == 'success' ||
+        needs.trigger-cabinet-build.result == 'success'
+      ) &&
+      needs.trigger-bot-build.result != 'failure' &&
+      needs.trigger-cabinet-build.result != 'failure'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/deploy-prod-bot.yml
+    with:
+      image_tag: ${{ needs.trigger-bot-build.outputs.version || 'latest' }}
+      cabinet_tag: ${{ needs.trigger-cabinet-build.outputs.version || 'latest' }}
+    secrets: inherit
+
+  deploy-prod-sub:
+    needs:
+      - deploy-test
+      - trigger-subscription-page-build
+    if: |
+      always() &&
+      needs.deploy-test.result == 'success' &&
+      needs.trigger-subscription-page-build.result == 'success'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/deploy-prod-sub.yml
+    with:
+      image_tag: ${{ needs.trigger-subscription-page-build.outputs.version }}
+    secrets: inherit
+
+  deploy-prod-nodes:
+    needs:
+      - deploy-test
+      - trigger-remnawave-node-build
+    if: |
+      always() &&
+      needs.deploy-test.result == 'success' &&
+      needs.trigger-remnawave-node-build.result == 'success'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/deploy-prod-nodes.yml
+    with:
+      image_tag: ${{ needs.trigger-remnawave-node-build.outputs.version }}
+    secrets: inherit

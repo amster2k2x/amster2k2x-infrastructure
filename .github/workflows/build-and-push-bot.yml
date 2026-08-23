@@ -2,6 +2,10 @@ name: Build bot (reusable)
 
 on:
   workflow_call:
+    outputs:
+      version:
+        description: 'Semver of the built image'
+        value: ${{ jobs.build.outputs.version }}
 
 permissions:
   contents: read
