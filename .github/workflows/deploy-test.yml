@@ -296,6 +296,8 @@ jobs:
             && echo "Panel OK"
           curl -sf "https://bot.test.amster2k2x.mywire.org/"   -o /dev/null \
             && echo "Bot OK"
+          curl -sf "https://sub.test.amster2k2x.mywire.org/xwEow-3qK6aGy08n" -o /dev/null \
+            && echo "Subscription page OK"
 
       - name: Print environment summary
         run: |
