@@ -29,49 +29,58 @@ jobs:
           format: html
           message: |
             🔄 <b>Node Fleet Deploy Started</b>
-            <b>Strategy:</b> Rolling (sequential)
+            <b>Strategy:</b> Rolling (max-parallel: 2)
             <b>Tag:</b> <code>${{ inputs.image_tag || 'latest' }}</code>
 
-  # Each node is a separate job so failures are per-node
-  # and don't block unrelated nodes. Add/remove nodes here.
-  node-01:
+  deploy-node:
+    needs: notify-start
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false        # one node failing doesn't cancel the rest
+      max-parallel: 2         # rolling — two nodes at a time
+      matrix:
+        include:
+          - node: node-01
+            host_secret: PROD_NODE_01_HOST
+          - node: node-02
+            host_secret: PROD_NODE_02_HOST
+          - node: node-03
+            host_secret: PROD_NODE_03_HOST
+          - node: node-04
+            host_secret: PROD_NODE_04_HOST
+          - node: node-05
+            host_secret: PROD_NODE_05_HOST
+          - node: node-06
+            host_secret: PROD_NODE_06_HOST
+          - node: node-07
+            host_secret: PROD_NODE_07_HOST
+          - node: node-08
+            host_secret: PROD_NODE_08_HOST
+          - node: node-09
+            host_secret: PROD_NODE_09_HOST
+          - node: node-10
+            host_secret: PROD_NODE_10_HOST
     steps:
-      - uses: webfactory/ssh-agent@dc588b651fe13d2e1f1c64f4e63c41e5e7e1aac4
+      - name: Install SSH key
+        uses: webfactory/ssh-agent@dc588b651fe13d2e1f1c64f4e63c41e5e7e1aac4
         with:
           ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
-      - run: ssh-keyscan -T 10 -H ${{ secrets.PROD_NODE_01_HOST }} >> ~/.ssh/known_hosts
-      - name: Deploy node-01
-        run: |
-          ssh deploy@${{ secrets.PROD_NODE_01_HOST }} \
-            "cd /opt/remnawave/node && \
-            export IMAGE_TAG=${{ inputs.image_tag }} && \
-            docker compose pull remnanode && \
-            docker compose up -d --no-deps --force-recreate remnanode"
 
-  node-02:
-    runs-on: ubuntu-latest
-    needs: node-01   # sequential — one node at a time
-    timeout-minutes: 10
-    steps:
-      - uses: webfactory/ssh-agent@dc588b651fe13d2e1f1c64f4e63c41e5e7e1aac4
-        with:
-          ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
-      - run: ssh-keyscan -T 10 -H ${{ secrets.PROD_NODE_02_HOST }} >> ~/.ssh/known_hosts
-      - name: Deploy node-02
-        run: |
-          ssh deploy@${{ secrets.PROD_NODE_02_HOST }} \
-            "cd /opt/remnawave/node && \
-            export IMAGE_TAG=${{ inputs.image_tag }} && \
-            docker compose pull remnanode && \
-            docker compose up -d --no-deps --force-recreate remnanode"
+      - name: Add host to known_hosts
+        run: ssh-keyscan -T 10 -H ${{ secrets[matrix.host_secret] }} >> ~/.ssh/known_hosts
 
-  # ... repeat for node-03 through node-10, each needs: the previous
+      - name: Deploy ${{ matrix.node }}
+        run: |
+          ssh deploy@${{ secrets[matrix.host_secret] }} \
+            "cd /opt/remnawave/node && \
+             export IMAGE_TAG=${{ inputs.image_tag }} && \
+             docker compose pull remnanode && \
+             docker compose up -d --no-deps --force-recreate remnanode"
 
   notify-result:
     runs-on: ubuntu-latest
-    needs: [node-01, node-02]  # list all node jobs here
+    needs: deploy-node
     if: always()
     steps:
       - uses: appleboy/telegram-action@214f06cfa3d3a588c1472116889437e7c6fd29b1
@@ -81,6 +90,6 @@ jobs:
           message_thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
           format: html
           message: |
-            ${{ contains(needs.*.result, 'failure') && '❌ <b>Node Fleet Deploy — Some Nodes Failed</b>' || '✅ <b>Node Fleet Deploy Succeeded</b>' }}
+            ${{ contains(needs.deploy-node.result, 'failure') && '❌ <b>Node Fleet Deploy — Some Nodes Failed</b>' || '✅ <b>Node Fleet Deploy Succeeded</b>' }}
             <b>Tag:</b> <code>${{ inputs.image_tag || 'latest' }}</code>
             🔗 <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">View Run</a>
