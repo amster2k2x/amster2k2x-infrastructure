@@ -1,4 +1,4 @@
-name: Upstream sync + build trigger
+name: Upstream sync + build trigger + deploy-test
 
 on:
   schedule:
@@ -36,7 +36,7 @@ jobs:
         id: sync
         uses: silvzr/Fork-Sync-With-Upstream-action@64c72154809503219edfa70e03f61dc11bfe68d0 # v3.4.3
         with:
-          upstream_sync_repo: BEDOLAGA-DEV/bedolaga-telegram-bot
+          upstream_sync_repo: BEDOLAGA-DEV/remnawave-bedolaga-telegram-bot
           upstream_sync_branch: main
           upstream_repo_access_token: ${{ secrets.PAT_TOKEN }}
           target_sync_repo: amster2k2x/remnawave-bedolaga-telegram-bot
