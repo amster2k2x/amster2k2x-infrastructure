@@ -46,22 +46,6 @@ jobs:
             host_secret: PROD_NODE_01_HOST
           - node: node-02
             host_secret: PROD_NODE_02_HOST
-          - node: node-03
-            host_secret: PROD_NODE_03_HOST
-          - node: node-04
-            host_secret: PROD_NODE_04_HOST
-          - node: node-05
-            host_secret: PROD_NODE_05_HOST
-          - node: node-06
-            host_secret: PROD_NODE_06_HOST
-          - node: node-07
-            host_secret: PROD_NODE_07_HOST
-          - node: node-08
-            host_secret: PROD_NODE_08_HOST
-          - node: node-09
-            host_secret: PROD_NODE_09_HOST
-          - node: node-10
-            host_secret: PROD_NODE_10_HOST
     steps:
       - name: Install SSH key
         uses: webfactory/ssh-agent@dc588b651fe13d2e1f1c64f4e63c41e5e7e1aac4
