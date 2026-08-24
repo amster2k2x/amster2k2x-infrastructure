@@ -27,6 +27,7 @@ on:
 jobs:
   simple-deploy:
     runs-on: ubuntu-latest
+    environment: prod        # ← triggers approval gate + scopes secrets
     steps:
       - name: Notify Telegram — start
         uses: appleboy/telegram-action@214f06cfa3d3a588c1472116889437e7c6fd29b1

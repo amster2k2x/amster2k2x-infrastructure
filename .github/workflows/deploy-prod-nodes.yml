@@ -35,9 +35,10 @@ jobs:
   deploy-node:
     needs: notify-start
     runs-on: ubuntu-latest
+    environment: prod        # ← triggers approval gate + scopes secrets
     timeout-minutes: 10
     strategy:
-      fail-fast: false        # one node failing doesn't cancel the rest
+      fail-fast: true        # one node failing doesn't cancel the rest
       max-parallel: 2         # rolling — two nodes at a time
       matrix:
         include:

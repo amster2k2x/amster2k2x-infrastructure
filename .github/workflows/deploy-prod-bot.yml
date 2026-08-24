@@ -35,12 +35,11 @@ jobs:
       display_name: Bedolaga Bot Worker
       compose_file: docker-compose-bot.yml
       deploy_dir: /opt/remnawave/bot
+      container_port: '8080'
       blue_port: '8080'
       green_port: '8081'
       health_path: '/health'
       # health_header passed via secret — see note below
-      nginx_upstream_blue: 'remnawave-bedolaga-telegram-bot-blue'
-      nginx_upstream_green: 'remnawave-bedolaga-telegram-bot-green'
       nginx_config_path: /etc/nginx/conf.d/bot.conf
       image_tag: ${{ inputs.image_tag || 'latest' }}
     secrets: inherit
@@ -55,11 +54,10 @@ jobs:
       display_name: Bedolaga Cabinet (MiniApp)
       compose_file: docker-compose-bot.yml
       deploy_dir: /opt/remnawave/bot
+      container_port: '80'
       blue_port: '4080'
       green_port: '4081'
       health_path: '/'
-      nginx_upstream_blue: 'bot_account-blue'
-      nginx_upstream_green: 'bot_account-green'
       nginx_config_path: /etc/nginx/conf.d/bot.conf
       image_tag: ${{ inputs.cabinet_tag || 'latest' }}
     secrets: inherit

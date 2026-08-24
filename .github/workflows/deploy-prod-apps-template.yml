@@ -76,6 +76,7 @@ jobs:
 
   blue-green-deploy:
     runs-on: ubuntu-latest
+    environment: prod        # ← triggers approval gate + scopes secrets
     outputs:
       deployed_slot: ${{ steps.swap.outputs.deployed_slot }}
       rolled_back: ${{ steps.rollback.outputs.rolled_back }}
@@ -105,8 +106,7 @@ jobs:
         id: current-slot
         run: |
           ACTIVE=$(ssh deploy@${{ secrets[inputs.ssh_host_secret] }} \
-            "grep -oP '(?<=server )${{ inputs.service_name }}-\K(blue|green)(?=:)' \
-            ${{ inputs.nginx_config_path }}")
+            "grep -oP 'server\s+${{ inputs.service_name }}-\K(blue|green)(?=:)' ${{ inputs.nginx_config_path }}")
 
           if [ "$ACTIVE" != "blue" ] && [ "$ACTIVE" != "green" ]; then
             echo "❌ Could not determine active slot from nginx config (got: '$ACTIVE')"
@@ -142,11 +142,6 @@ jobs:
             && echo "${{ inputs.blue_port }}" \
             || echo "${{ inputs.green_port }}")
 
-          HEADER_ARG=""
-          if [ -n "${{ inputs.health_header }}" ]; then
-            HEADER_ARG="-H \"${{ inputs.health_header }}\""
-          fi
-
           ssh deploy@${{ secrets[inputs.ssh_host_secret] }} \
             "TARGET_PORT=$TARGET_PORT \
              HEALTH_PATH=${{ inputs.health_path }} \
@@ -172,15 +167,15 @@ jobs:
           PREV_SLOT=${{ steps.current-slot.outputs.active }}
           ssh deploy@${{ secrets[inputs.ssh_host_secret] }} \
             "cd ${{ inputs.deploy_dir }} && \
-            docker compose -f ${{ inputs.compose_file }} \
+            IMAGE_TAG=${{ inputs.image_tag }} docker compose -f ${{ inputs.compose_file }} \
               stop ${{ inputs.service_name }}-${{ steps.current-slot.outputs.active }} && \
-            docker compose -f ${{ inputs.compose_file }} \
+            IMAGE_TAG=${{ inputs.image_tag }} docker compose -f ${{ inputs.compose_file }} \
               rm -f ${{ inputs.service_name }}-${{ steps.current-slot.outputs.active }}"
           echo "✅ Stopped old slot: ${PREV_SLOT}"
 
       - name: Rollback — health check failed
         id: rollback
-        if: steps.health.outcome == 'failure'
+        if: failure() && steps.health.outcome == 'failure'
         run: |
           echo "❌ Health check failed — rolling back, removing new slot"
           ssh deploy@${{ secrets[inputs.ssh_host_secret] }} \

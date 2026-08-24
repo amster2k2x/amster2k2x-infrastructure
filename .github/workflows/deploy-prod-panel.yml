@@ -20,13 +20,14 @@ permissions:
 
 jobs:
   deploy:
-    uses: ./.github/workflows/deploy-prod-sub-node-template.yml
+    uses: ./.github/workflows/deploy-prod-apps-template.yml
     with:
       ssh_host_secret: PROD_PANEL_VPS_HOST
       service_name: remnawave
       display_name: Remnawave Panel
       compose_file: docker-compose-panel.yml
       deploy_dir: /opt/remnawave/panel
+      container_port: '3000'
       blue_port: '3000'
       green_port: '3001'
       health_path: '/health'
