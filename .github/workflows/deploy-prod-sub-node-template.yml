@@ -30,7 +30,7 @@ jobs:
     environment: prod        # ← triggers approval gate + scopes secrets
     steps:
       - name: Notify Telegram — start
-        uses: appleboy/telegram-action@214f06cfa3d3a588c1472116889437e7c6fd29b1
+        uses: appleboy/telegram-action@214f06cfa3d3a588c1472116889437e7c6fd29b1 # v1.1.1
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -44,7 +44,7 @@ jobs:
             <b>Trigger:</b> ${{ github.event_name }} by ${{ github.actor }}
 
       - name: Install SSH key
-        uses: webfactory/ssh-agent@dc588b651fe13d2e1f1c64f4e63c41e5e7e1aac4
+        uses: webfactory/ssh-agent@e83874834305fe9a4a2997156cb26c5de65a8555 # v0.10.0
         with:
           ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
 
@@ -62,7 +62,7 @@ jobs:
 
       - name: Notify Telegram — result
         if: always()
-        uses: appleboy/telegram-action@214f06cfa3d3a588c1472116889437e7c6fd29b1
+        uses: appleboy/telegram-action@214f06cfa3d3a588c1472116889437e7c6fd29b1 # v1.1.1
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
