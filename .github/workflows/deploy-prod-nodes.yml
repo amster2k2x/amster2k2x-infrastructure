@@ -21,7 +21,7 @@ jobs:
   notify-start:
     runs-on: ubuntu-latest
     steps:
-      - uses: appleboy/telegram-action@214f06cfa3d3a588c1472116889437e7c6fd29b1
+      - uses: appleboy/telegram-action@214f06cfa3d3a588c1472116889437e7c6fd29b1 # v1.1.1
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -48,7 +48,7 @@ jobs:
             host_secret: PROD_NODE_02_HOST
     steps:
       - name: Install SSH key
-        uses: webfactory/ssh-agent@dc588b651fe13d2e1f1c64f4e63c41e5e7e1aac4
+        uses: webfactory/ssh-agent@e83874834305fe9a4a2997156cb26c5de65a8555 # v0.10.0
         with:
           ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
 
@@ -68,7 +68,7 @@ jobs:
     needs: deploy-node
     if: always()
     steps:
-      - uses: appleboy/telegram-action@214f06cfa3d3a588c1472116889437e7c6fd29b1
+      - uses: appleboy/telegram-action@214f06cfa3d3a588c1472116889437e7c6fd29b1 # v1.1.1
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
