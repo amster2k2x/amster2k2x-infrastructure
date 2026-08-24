@@ -40,11 +40,6 @@ on:
         required: false
         type: string
         default: '/health'
-      health_header:
-        description: 'Optional header for health check, e.g. "X-API-Key: mytoken"'
-        required: false
-        type: string
-        default: ''
       nginx_config_path:
         description: 'Absolute path to nginx site config on VPS'
         required: true
@@ -54,6 +49,10 @@ on:
         required: false
         type: string
         default: 'latest'
+    secrets:
+      health_header:
+        description: 'Optional header for health check, e.g. "X-API-Key: mytoken"'
+        required: false
 
 jobs:
   notify-start:

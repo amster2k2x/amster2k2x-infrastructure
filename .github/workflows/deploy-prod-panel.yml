@@ -25,14 +25,14 @@ jobs:
       ssh_host_secret: PROD_PANEL_VPS_HOST
       service_name: remnawave
       display_name: Remnawave Panel
-      compose_file: docker-compose-panel.yml
-      deploy_dir: /opt/remnawave/panel
+      compose_file: docker-compose.yml
+      deploy_dir: /opt/remnawave
       container_port: '3000'
       blue_port: '3000'
       green_port: '3001'
       health_path: '/health'
       nginx_upstream_blue: 'remnawave-blue'
       nginx_upstream_green: 'remnawave-green'
-      nginx_config_path: /etc/nginx/conf.d/panel.conf
+      nginx_config_path: /opt/nginx/nginx.conf
       image_tag: ${{ inputs.image_tag || 'latest' }}
     secrets: inherit

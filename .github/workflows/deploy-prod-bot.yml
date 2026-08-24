@@ -33,16 +33,18 @@ jobs:
       ssh_host_secret: PROD_BOT_VPS_HOST
       service_name: remnawave-bot
       display_name: Bedolaga Bot Worker
-      compose_file: docker-compose-bot.yml
-      deploy_dir: /opt/remnawave/bot
+      compose_file: docker-compose.yml
+      deploy_dir: /opt
       container_port: '8080'
       blue_port: '8080'
       green_port: '8081'
       health_path: '/health'
-      # health_header passed via secret — see note below
-      nginx_config_path: /etc/nginx/conf.d/bot.conf
+      nginx_config_path: /opt/nginx/nginx.conf
       image_tag: ${{ inputs.image_tag || 'latest' }}
-    secrets: inherit
+    secrets: 
+      # health_header passed via secret — see note below
+      health_header: 'X-API-Key: ${{ secrets.WEB_API_DEFAULT_TOKEN }}'
+      inherit: true
 
   # Cabinet (bot-account) blue-green — runs after bot succeeds
   deploy-cabinet:
@@ -52,12 +54,12 @@ jobs:
       ssh_host_secret: PROD_BOT_VPS_HOST
       service_name: remnawave-bot-account
       display_name: Bedolaga Cabinet (MiniApp)
-      compose_file: docker-compose-bot.yml
-      deploy_dir: /opt/remnawave/bot
+      compose_file: docker-compose.yml
+      deploy_dir: /opt
       container_port: '80'
       blue_port: '4080'
       green_port: '4081'
       health_path: '/'
-      nginx_config_path: /etc/nginx/conf.d/bot.conf
+      nginx_config_path: /opt/nginx/nginx.conf
       image_tag: ${{ inputs.cabinet_tag || 'latest' }}
     secrets: inherit

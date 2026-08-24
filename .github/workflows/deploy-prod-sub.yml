@@ -24,7 +24,7 @@ jobs:
       ssh_host_secret: PROD_BOT_VPS_HOST
       service_name: remnawave-subscription-page
       display_name: Subscription Page
-      compose_file: docker-compose-bot.yml
-      deploy_dir: /opt/remnawave/bot
+      compose_file: docker-compose.yml
+      deploy_dir: /opt
       image_tag: ${{ inputs.image_tag || 'latest' }}
     secrets: inherit

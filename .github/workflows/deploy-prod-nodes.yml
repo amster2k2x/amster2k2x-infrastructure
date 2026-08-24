@@ -74,7 +74,7 @@ jobs:
       - name: Deploy ${{ matrix.node }}
         run: |
           ssh deploy@${{ secrets[matrix.host_secret] }} \
-            "cd /opt/remnawave/node && \
+            "cd /opt/remnanode && \
              export IMAGE_TAG=${{ inputs.image_tag }} && \
              docker compose pull remnanode && \
              docker compose up -d --no-deps --force-recreate remnanode"
