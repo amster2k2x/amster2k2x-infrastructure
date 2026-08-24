@@ -1,0 +1,36 @@
+x-common: &common
+  ulimits:
+    nofile:
+      soft: 1048576
+      hard: 1048576
+  restart: always
+  networks:
+    - remnawave-network
+
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: 100m
+      max-file: 5
+
+services:
+  nginx:
+    image: nginx:1.30
+    container_name: nginx
+    hostname: nginx
+    <<: [*common, *logging]
+    volumes:
+      - /opt/bot/miniapp:/miniapp:ro
+      - /opt/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/letsencrypt/live/domain.com/fullchain.pem:/etc/nginx/ssl/fullchain.pem:ro
+      - /etc/letsencrypt/live/domain.com/privkey.pem:/etc/nginx/ssl/privkey.key:ro
+    restart: always
+    ports:
+      - '0.0.0.0:443:443'
+    networks:
+      - remnawave-network
+
+networks:
+  remnawave-network:
+    external: true

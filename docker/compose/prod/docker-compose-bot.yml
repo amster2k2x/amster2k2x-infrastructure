@@ -18,7 +18,7 @@ x-env: &env
   env_file: .env
 
 x-remnawave-bot: &remnawave-bot
-  image: sammosdev/remnawave-bedolaga-telegram-bot:${BOT_IMAGE_TAG:-latest}
+  image: sammosdev/remnawave-bedolaga-telegram-bot:${IMAGE_TAG:-latest}
   <<: [*common, *logging, *env]
   restart: unless-stopped
   depends_on:
@@ -39,11 +39,11 @@ x-remnawave-bot: &remnawave-bot
     LOCALES_PATH: "${LOCALES_PATH:-/app/locales}"
   volumes:
     - valkey-socket:/var/run/valkey
-    - ./remnawave-bedolaga-telegram-bot/logs:/app/logs:rw
+    - /opt/bot/logs:/app/logs:rw
     - /etc/timezone:/etc/timezone:ro
     - /etc/localtime:/etc/localtime:ro
-    - ./remnawave-bedolaga-telegram-bot/vpn_logo.png:/app/vpn_logo.png:ro
-    - ./remnawave-bedolaga-telegram-bot/uploads:/app/uploads:rw
+    - /opt/bot/vpn_logo.png:/app/vpn_logo.png:ro
+    - /opt/bot/uploads:/app/uploads:rw
   healthcheck:
     test:
       [
@@ -55,30 +55,7 @@ x-remnawave-bot: &remnawave-bot
     retries: 3
     start_period: 30s
 
-x-remnawave-bot-account: &remnawave-bot-account
-  image: sammosdev/remnawave-bedolaga-cabinet:${CABINET_IMAGE_TAG:-latest}
-  <<: [*common, *logging, *env]
-  restart: unless-stopped
-  volumes:
-    - ./bedolaga-cabinet/vite.svg:/usr/share/nginx/html/vite.svg:ro
-    - ./bedolaga-cabinet/heleket_ac20b019.html:/usr/share/nginx/html/heleket_ac20b019.html:ro
-  healthcheck:
-    test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
-    interval: 30s
-    timeout: 3s
-    retries: 3
-    start_period: 10s
-
 services:
-  remnawave-subscription-page:
-    image: sammosdev/remnawave-subscription-page:${SUB_PAGE_IMAGE_TAG:-latest}
-    container_name: remnawave-subscription-page
-    hostname: remnawave-subscription-page
-    <<: [*common, *logging, *env]
-    restart: always
-    ports:
-      - '127.0.0.1:3010:3010'
-
   remnawave-bot-db:
     image: postgres:18.4
     container_name: remnawave-bot-db
@@ -139,36 +116,6 @@ services:
     ports:
       - "127.0.0.1:8081:8080"   # green owns 8081 → container 8080
 
-  remnawave-bot-account-blue:
-    <<: *remnawave-bot-account
-    container_name: remnawave-bot-account-blue
-    hostname: remnawave-bot-account-blue
-    ports:
-      - "127.0.0.1:4080:80"
-
-  remnawave-bot-account-green:
-    <<: *remnawave-bot-account
-    container_name: remnawave-bot-account-green
-    hostname: remnawave-bot-account-green
-    ports:
-      - "127.0.0.1:4081:80"
-
-  nginx:
-    image: nginx:1.30
-    container_name: nginx
-    hostname: nginx
-    <<: [*common, *logging]
-    volumes:
-      - ./remnawave-bedolaga-telegram-bot/miniapp:/miniapp:ro
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - /etc/letsencrypt/live/domain.com/fullchain.pem:/etc/nginx/ssl/fullchain.pem:ro
-      - /etc/letsencrypt/live/domain.com/privkey.pem:/etc/nginx/ssl/privkey.key:ro
-    restart: always
-    ports:
-      - '0.0.0.0:443:443'
-    networks:
-      - remnawave-network
-
 volumes:
   postgres-data:
     driver: local
@@ -179,4 +126,4 @@ networks:
   remnawave-network:
     name: remnawave-network
     driver: bridge
-    external: false
+    external: true

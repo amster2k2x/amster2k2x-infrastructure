@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: 'Node image tag'
+        description: 'Image tag to deploy'
         required: false
         default: 'latest'
   workflow_call:

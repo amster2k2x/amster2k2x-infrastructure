@@ -1,8 +1,12 @@
+x-env: &env
+  env_file: .env
+
 services:
   remnanode:
+    image: remnawave/node:${IMAGE_TAG:-latest}
     container_name: remnanode
     hostname: remnanode
-    image: remnawave/node:latest
+    <<: *env
     network_mode: host
     restart: always
     cap_add:

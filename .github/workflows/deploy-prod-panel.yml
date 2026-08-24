@@ -27,12 +27,10 @@ jobs:
       display_name: Remnawave Panel
       compose_file: docker-compose.yml
       deploy_dir: /opt/remnawave
-      container_port: '3000'
-      blue_port: '3000'
-      green_port: '3001'
+      container_port: '3000'  # this is what nginx routes to internally
+      blue_port: '3001'     # blue always owns 3001 for metrics
+      green_port: '3011'    # green always owns 3011 for metrics
       health_path: '/health'
-      nginx_upstream_blue: 'remnawave-blue'
-      nginx_upstream_green: 'remnawave-green'
       nginx_config_path: /opt/nginx/nginx.conf
       image_tag: ${{ inputs.image_tag || 'latest' }}
     secrets: inherit

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: 'Bot image tag to deploy'
+        description: 'Image tag to deploy'
         required: false
         default: 'latest'
       cabinet_tag:
@@ -34,17 +34,14 @@ jobs:
       service_name: remnawave-bot
       display_name: Bedolaga Bot Worker
       compose_file: docker-compose.yml
-      deploy_dir: /opt
+      deploy_dir: /opt/bot
       container_port: '8080'
       blue_port: '8080'
       green_port: '8081'
       health_path: '/health'
       nginx_config_path: /opt/nginx/nginx.conf
       image_tag: ${{ inputs.image_tag || 'latest' }}
-    secrets: 
-      # health_header passed via secret — see note below
-      health_header: 'X-API-Key: ${{ secrets.WEB_API_DEFAULT_TOKEN }}'
-      inherit: true
+    secrets: inherit
 
   # Cabinet (bot-account) blue-green — runs after bot succeeds
   deploy-cabinet:
@@ -53,9 +50,9 @@ jobs:
     with:
       ssh_host_secret: PROD_BOT_VPS_HOST
       service_name: remnawave-bot-account
-      display_name: Bedolaga Cabinet (MiniApp)
+      display_name: Bedolaga Cabinet
       compose_file: docker-compose.yml
-      deploy_dir: /opt
+      deploy_dir: /opt/bot-cabinet
       container_port: '80'
       blue_port: '4080'
       green_port: '4081'

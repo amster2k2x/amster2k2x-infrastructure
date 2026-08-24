@@ -40,6 +40,11 @@ on:
         required: false
         type: string
         default: '/health'
+      health_header:
+        description: 'Optional header for health check, e.g. "X-API-Key: mytoken"'
+        required: false
+        type: string
+        default: ''
       nginx_config_path:
         description: 'Absolute path to nginx site config on VPS'
         required: true
@@ -49,10 +54,6 @@ on:
         required: false
         type: string
         default: 'latest'
-    secrets:
-      health_header:
-        description: 'Optional header for health check, e.g. "X-API-Key: mytoken"'
-        required: false
 
 jobs:
   notify-start:
@@ -172,19 +173,18 @@ jobs:
               rm -f ${{ inputs.service_name }}-${{ steps.current-slot.outputs.active }}"
           echo "✅ Stopped old slot: ${PREV_SLOT}"
 
-      - name: Rollback — health check failed
+      - name: Rollback — deploy failed, clean up target slot
         id: rollback
-        if: failure() && steps.health.outcome == 'failure'
+        if: failure() && steps.current-slot.outcome == 'success'
         run: |
-          echo "❌ Health check failed — rolling back, removing new slot"
+          echo "❌ Deploy failed — cleaning up target slot (${{ steps.current-slot.outputs.target }})"
           ssh deploy@${{ secrets[inputs.ssh_host_secret] }} \
             "cd ${{ inputs.deploy_dir }} && \
-             docker compose -f ${{ inputs.compose_file }} \
-               stop ${{ inputs.service_name }}-${{ steps.current-slot.outputs.target }} && \
-             docker compose -f ${{ inputs.compose_file }} \
-               rm -f ${{ inputs.service_name }}-${{ steps.current-slot.outputs.target }}"
+            docker compose -f ${{ inputs.compose_file }} \
+              stop ${{ inputs.service_name }}-${{ steps.current-slot.outputs.target }} || true && \
+            docker compose -f ${{ inputs.compose_file }} \
+              rm -f ${{ inputs.service_name }}-${{ steps.current-slot.outputs.target }} || true"
           echo "rolled_back=true" >> "$GITHUB_OUTPUT"
-          exit 1
 
   notify-result:
     runs-on: ubuntu-latest
