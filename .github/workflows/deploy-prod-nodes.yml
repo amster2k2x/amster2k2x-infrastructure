@@ -35,11 +35,11 @@ jobs:
   deploy-node:
     needs: notify-start
     runs-on: self-hosted
-    environment: prod        # ← triggers approval gate + scopes secrets
+    environment: prod
     timeout-minutes: 10
     strategy:
-      fail-fast: false        # one node failing doesn't cancel the rest
-      max-parallel: 2         # rolling — two nodes at a time
+      fail-fast: false
+      max-parallel: 2
       matrix:
         include:
           - node: node-01
@@ -72,6 +72,7 @@ jobs:
         run: ssh-keyscan -T 10 -H ${{ secrets[matrix.host_secret] }} >> ~/.ssh/known_hosts
 
       - name: Deploy ${{ matrix.node }}
+        id: deploy
         run: |
           ssh deploy@${{ secrets[matrix.host_secret] }} \
             "cd /opt/remnanode && \
@@ -79,11 +80,62 @@ jobs:
              docker compose pull remnanode && \
              docker compose up -d --no-deps --force-recreate remnanode"
 
+      - name: Record result
+        if: always()
+        run: |
+          mkdir -p /tmp/node-results
+          echo "${{ matrix.host_secret }}:${{ steps.deploy.outcome }}" > /tmp/node-results/result.txt
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: node-result-${{ matrix.node }}
+          path: /tmp/node-results/result.txt
+          retention-days: 1
+
   notify-result:
     runs-on: self-hosted
     needs: deploy-node
     if: always()
     steps:
+      - name: Download all node results
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: node-results
+          pattern: node-result-*
+          merge-multiple: true
+
+      - name: Build success/failure lists
+        id: summarize
+        run: |
+          SUCCESS=""
+          FAILED=""
+          for f in node-results/*.txt; do
+            NAME=$(cut -d: -f1 "$f")
+            STATUS=$(cut -d: -f2 "$f")
+            if [ "$STATUS" = "success" ]; then
+              SUCCESS="${SUCCESS}✅ ${NAME}
+          "
+            else
+              FAILED="${FAILED}❌ ${NAME} (${STATUS})
+          "
+            fi
+          done
+          [ -z "$SUCCESS" ] && SUCCESS="(none)"
+          [ -z "$FAILED" ] && FAILED="(none)"
+
+          {
+            echo "success_list<<EOF"
+            echo "$SUCCESS"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "failed_list<<EOF"
+            echo "$FAILED"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
       - uses: appleboy/telegram-action@214f06cfa3d3a588c1472116889437e7c6fd29b1 # v1.1.1
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -93,4 +145,11 @@ jobs:
           message: |
             ${{ contains(needs.deploy-node.result, 'failure') && '❌ <b>Node Fleet Deploy — Some Nodes Failed</b>' || '✅ <b>Node Fleet Deploy Succeeded</b>' }}
             <b>Tag:</b> <code>${{ inputs.image_tag || 'latest' }}</code>
+
+            <b>Succeeded:</b>
+            <pre>${{ steps.summarize.outputs.success_list }}</pre>
+
+            <b>Failed:</b>
+            <pre>${{ steps.summarize.outputs.failed_list }}</pre>
+
             🔗 <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">View Run</a>
