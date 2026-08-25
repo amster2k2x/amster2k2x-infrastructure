@@ -1,4 +1,4 @@
-name: Upstream sync + build trigger + deploy-test
+name: Upstream sync + build trigger + deploy-test + deploy prod
 
 on:
   schedule:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       service:
-        description: 'Which service to sync+build (or "all")'
+        description: 'Which service to sync+build+test+deploy prod (or "all")'
         required: true
         default: 'all'
         type: choice
