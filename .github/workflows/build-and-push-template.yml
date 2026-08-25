@@ -62,6 +62,31 @@ on:
         required: false
         type: string
         default: frontend/dist
+      build_metadata_args:
+        description: 'If true, auto-appends __RW_METADATA_* build-args (branch, build_time, build_number, version, backend_commit, frontend_commit). Used by remnawave-backend.'
+        required: false
+        type: boolean
+        default: false
+      metadata_git_branch:
+        description: 'Value for __RW_METADATA_GIT_BRANCH when build_metadata_args is true'
+        required: false
+        type: string
+        default: main
+      frontend_url:
+        description: 'Optional ARG FRONTEND_URL passed to the Docker build, e.g. a pinned frontend release zip URL'
+        required: false
+        type: string
+        default: ''
+      frontend_repo:
+        description: 'org/repo used to resolve __RW_METADATA_GIT_FRONTEND_COMMIT (should match whatever frontend_ref/frontend_url point at). Leave empty to skip resolution.'
+        required: false
+        type: string
+        default: ''
+      frontend_ref:
+        description: 'Branch, tag, or SHA in frontend_repo to resolve the commit SHA for __RW_METADATA_GIT_FRONTEND_COMMIT'
+        required: false
+        type: string
+        default: main
     outputs:
       version:
         description: 'Semver extracted from version file'
@@ -128,9 +153,50 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
 
+  prepare:
+    name: Resolve build metadata
+    needs: secret-scan
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      build_time: ${{ steps.build-time.outputs.build_time }}
+      frontend_commit: ${{ steps.frontend-commit.outputs.sha }}
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ inputs.repo }}
+          token: ${{ secrets.PAT_TOKEN }}
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+ 
+      - name: Extract package version
+        id: get-version
+        run: |
+          if [ "${{ inputs.version_source }}" = "toml" ]; then
+            VERSION=$(grep "^version" ${{ inputs.version_file }} | awk -F'"' '{print $2}')
+          else
+            VERSION=$(jq -r '${{ inputs.version_jq_path }}' ${{ inputs.version_file }})
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+ 
+      - name: Record build time
+        id: build-time
+        run: echo "build_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+ 
+      - name: Resolve frontend commit
+        id: frontend-commit
+        if: inputs.frontend_repo != ''
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          SHA=$(gh api "repos/${{ inputs.frontend_repo }}/commits/${{ inputs.frontend_ref }}" --jq .sha)
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+  
   build-images:
     name: Build ${{ matrix.platform }}
-    needs: secret-scan
+    needs: [secret-scan, prepare]
     runs-on: ${{ matrix.runner }}
     permissions:
       packages: write
@@ -189,7 +255,15 @@ jobs:
           file: ${{ inputs.dockerfile }}
           platforms: ${{ matrix.platform }}
           push: true
-          build-args: ${{ inputs.build_args }}
+          build-args: |
+            ${{ inputs.build_args }}
+            ${{ inputs.build_metadata_args && format('__RW_METADATA_GIT_BRANCH={0}', inputs.metadata_git_branch) || '' }}
+            ${{ inputs.build_metadata_args && format('__RW_METADATA_BUILD_TIME={0}', needs.prepare.outputs.build_time) || '' }}
+            ${{ inputs.build_metadata_args && format('__RW_METADATA_BUILD_NUMBER={0}', github.run_number) || '' }}
+            ${{ inputs.build_metadata_args && format('__RW_METADATA_VERSION={0}', needs.prepare.outputs.version) || '' }}
+            ${{ inputs.build_metadata_args && format('__RW_METADATA_GIT_BACKEND_COMMIT={0}', github.sha) || '' }}
+            ${{ inputs.build_metadata_args && format('__RW_METADATA_GIT_FRONTEND_COMMIT={0}', needs.prepare.outputs.frontend_commit) || '' }}
+            ${{ inputs.frontend_url != '' && format('FRONTEND_URL={0}', inputs.frontend_url) || '' }}
           outputs: |
             type=image,"name=${{ inputs.image }},${{ inputs.dockerhub_image }}",push-by-digest=true,name-canonical=true,push=true
 

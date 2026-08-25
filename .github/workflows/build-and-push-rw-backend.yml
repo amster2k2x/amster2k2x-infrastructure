@@ -20,6 +20,15 @@ jobs:
       display_name: Remnawave Backend
       image: ghcr.io/amster2k2x/remnawave-backend
       dockerhub_image: sammosdev/remnawave-backend
+      build_metadata_args: true
+      frontend_url: https://github.com/amster2k2x/remnawave-frontend/releases/latest/download/remnawave-frontend.zip
+      # ASSUMPTION: the frontend repo has a git tag "3.3.2" matching the release above.
+      # __RW_METADATA_GIT_FRONTEND_COMMIT will resolve to that tag's commit SHA, not
+      # whatever's currently on frontend main (which may have moved on since the release
+      # was cut). Update frontend_url + frontend_ref together whenever you bump the
+      # pinned frontend release.
+      frontend_repo: amster2k2x/remnawave-frontend
+      frontend_ref: 'main'
       gitleaks_allowlist: |
         paths = [
           '''^configs/xray/''',
