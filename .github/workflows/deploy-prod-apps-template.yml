@@ -89,9 +89,9 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.PROD_SSH_KEY }}
 
-      - name: Add host to known_hosts
-        run: ssh-keyscan -T 10 -H ${{ secrets[matrix.host_secret] }} >> ~/.ssh/known_hosts
-
+      - name: Add VPS to known_hosts
+        run: ssh-keyscan -T 10 -H ${{ secrets[inputs.ssh_host_secret] }} >> ~/.ssh/known_hosts
+        
       - name: Copy helper scripts to VPS
         run: |
           scp scripts/blue-green-switch.sh \
