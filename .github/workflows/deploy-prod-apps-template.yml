@@ -187,7 +187,7 @@ jobs:
           echo "rolled_back=true" >> "$GITHUB_OUTPUT"
 
   notify-result:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: blue-green-deploy
     if: always()
     steps:

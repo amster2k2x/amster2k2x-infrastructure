@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   notify-start:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: appleboy/telegram-action@214f06cfa3d3a588c1472116889437e7c6fd29b1 # v1.1.1
         with:
@@ -34,11 +34,11 @@ jobs:
 
   deploy-node:
     needs: notify-start
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     environment: prod        # ← triggers approval gate + scopes secrets
     timeout-minutes: 10
     strategy:
-      fail-fast: true        # one node failing doesn't cancel the rest
+      fail-fast: false        # one node failing doesn't cancel the rest
       max-parallel: 2         # rolling — two nodes at a time
       matrix:
         include:
@@ -46,6 +46,22 @@ jobs:
             host_secret: PROD_NODE_01_HOST
           - node: node-02
             host_secret: PROD_NODE_02_HOST
+          - node: node-03
+            host_secret: PROD_NODE_03_HOST
+          - node: node-04
+            host_secret: PROD_NODE_04_HOST
+          - node: node-05
+            host_secret: PROD_NODE_05_HOST
+          - node: node-06
+            host_secret: PROD_NODE_06_HOST
+          - node: node-07
+            host_secret: PROD_NODE_07_HOST
+          - node: node-08
+            host_secret: PROD_NODE_08_HOST
+          - node: node-09
+            host_secret: PROD_NODE_09_HOST
+          - node: node-10
+            host_secret: PROD_NODE_10_HOST
     steps:
       - name: Install SSH key
         uses: webfactory/ssh-agent@e83874834305fe9a4a2997156cb26c5de65a8555 # v0.10.0
@@ -64,7 +80,7 @@ jobs:
              docker compose up -d --no-deps --force-recreate remnanode"
 
   notify-result:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: deploy-node
     if: always()
     steps:
