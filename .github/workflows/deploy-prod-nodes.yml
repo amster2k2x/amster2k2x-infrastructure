@@ -32,10 +32,16 @@ jobs:
             <b>Strategy:</b> Rolling (max-parallel: 2)
             <b>Tag:</b> <code>${{ inputs.image_tag || 'latest' }}</code>
 
-  deploy-node:
+  approve-prod:
     needs: notify-start
+    runs-on: ubuntu-latest
+    environment: prod        # ← the ONE approval gate, fires once, before the fleet starts
+    steps:
+      - run: echo "Approved for prod node fleet deploy — tag ${{ inputs.image_tag || 'latest' }}"
+
+  deploy-node:
+    needs: approve-prod
     runs-on: self-hosted
-    environment: prod
     timeout-minutes: 10
     strategy:
       fail-fast: false
