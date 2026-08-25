@@ -15,14 +15,23 @@ echo "🔀 Switching upstream: ${INACTIVE_CONTAINER} → ${ACTIVE_CONTAINER}:${C
 
 cp "$NGINX_CONFIG" "${NGINX_CONFIG}.bak"
 
-sed -i \
+# Write to a temp file, then cat it back into the ORIGINAL file (not sed -i).
+# sed -i does a write-and-rename under the hood, which swaps in a new inode —
+# that breaks Docker's single-file bind mount, since the running nginx
+# container stays attached to the old (now-orphaned) inode and silently
+# never sees the change. `cat > file` truncates and writes into the
+# existing inode instead, which the bind mount actually tracks.
+sed \
   "s|server ${SERVICE}-blue:${CONTAINER_PORT};|server ${ACTIVE_CONTAINER}:${CONTAINER_PORT};|g; \
    s|server ${SERVICE}-green:${CONTAINER_PORT};|server ${ACTIVE_CONTAINER}:${CONTAINER_PORT};|g" \
-  "$NGINX_CONFIG"
+  "$NGINX_CONFIG" > "${NGINX_CONFIG}.tmp"
+
+cat "${NGINX_CONFIG}.tmp" > "$NGINX_CONFIG"
+rm "${NGINX_CONFIG}.tmp"
 
 if ! docker exec "$NGINX_CONTAINER" nginx -t 2>/dev/null; then
   echo "❌ nginx -t failed — restoring backup"
-  cp "${NGINX_CONFIG}.bak" "$NGINX_CONFIG"
+  cat "${NGINX_CONFIG}.bak" > "$NGINX_CONFIG"
   exit 1
 fi
 
