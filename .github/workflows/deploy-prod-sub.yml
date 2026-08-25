@@ -18,24 +18,28 @@ permissions:
   contents: read
 
 jobs:
-  deploy:
-    runs-on: self-hosted
-    environment: prod
+  notify-start:
+    runs-on: ubuntu-latest
     steps:
-      - name: Notify Telegram — start
-        uses: appleboy/telegram-action@214f06cfa3d3a588c1472116889437e7c6fd29b1 # v1.1.1
+      - uses: appleboy/telegram-action@214f06cfa3d3a588c1472116889437e7c6fd29b1 # v1.1.1
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           message_thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
           format: html
           message: |
-            🔄 <b>Prod Deploy Started</b>
+            🔄 <b>Prod Subscription Page Deploy Started</b>
 
             <b>Service:</b> Subscription Page
             <b>Strategy:</b> Simple (pull → down → up)
             <b>Trigger:</b> ${{ github.event_name }} by ${{ github.actor }}
+            <b>Tag:</b> <code>${{ inputs.image_tag }}</code>
+            🔄 <b>Prod Subscription Page Deploy Started</b>
 
+  deploy-sub:
+    runs-on: self-hosted
+    environment: prod
+    steps:
       - name: Install SSH key
         uses: webfactory/ssh-agent@e83874834305fe9a4a2997156cb26c5de65a8555 # v0.10.0
         with:
@@ -53,8 +57,12 @@ jobs:
             docker compose -f docker-compose.yml \
                 up -d --no-deps --force-recreate remnawave-subscription-page"
 
+  notify-result:
+    runs-on: ubuntu-latest
+    needs: deploy-sub
+    if: always()
+    steps:
       - name: Notify Telegram — result
-        if: always()
         uses: appleboy/telegram-action@214f06cfa3d3a588c1472116889437e7c6fd29b1 # v1.1.1
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -62,5 +70,9 @@ jobs:
           message_thread_id: ${{ secrets.TELEGRAM_TOPIC_ID }}
           format: html
           message: |
-            ${{ job.status == 'success' && '✅ <b>Deploy Succeeded</b>' || '❌ <b>Deploy FAILED</b>' }}
+            ${{ needs.deploy-sub.result == 'success' && '✅ <b>Prod Sub Deploy Succeeded</b>' || '❌ <b>Prod Sub Deploy FAILED</b>' }}
+
             <b>Service:</b> Subscription Page
+            <b>Tag:</b> <code>${{ inputs.image_tag }}</code>
+
+            🔗 <a href="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}">View Run</a>
