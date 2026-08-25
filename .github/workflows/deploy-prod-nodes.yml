@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   notify-start:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - uses: appleboy/telegram-action@214f06cfa3d3a588c1472116889437e7c6fd29b1 # v1.1.1
         with:
@@ -95,7 +95,7 @@ jobs:
           retention-days: 1
 
   notify-result:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: deploy-node
     if: always()
     steps:
