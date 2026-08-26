@@ -167,9 +167,7 @@ jobs:
           ssh deploy@${{ secrets[inputs.ssh_host_secret] }} \
             "cd ${{ inputs.deploy_dir }} && \
             IMAGE_TAG=${{ inputs.image_tag }} docker compose -f ${{ inputs.compose_file }} \
-              stop ${{ inputs.service_name }}-${{ steps.current-slot.outputs.active }} && \
-            IMAGE_TAG=${{ inputs.image_tag }} docker compose -f ${{ inputs.compose_file }} \
-              rm -f ${{ inputs.service_name }}-${{ steps.current-slot.outputs.active }}"
+              stop ${{ inputs.service_name }}-${{ steps.current-slot.outputs.active }}"
           echo "✅ Stopped old slot: ${PREV_SLOT}"
 
       - name: Rollback — deploy failed, clean up target slot
@@ -180,9 +178,7 @@ jobs:
           ssh deploy@${{ secrets[inputs.ssh_host_secret] }} \
             "cd ${{ inputs.deploy_dir }} && \
             docker compose -f ${{ inputs.compose_file }} \
-              stop ${{ inputs.service_name }}-${{ steps.current-slot.outputs.target }} || true && \
-            docker compose -f ${{ inputs.compose_file }} \
-              rm -f ${{ inputs.service_name }}-${{ steps.current-slot.outputs.target }} || true"
+              stop ${{ inputs.service_name }}-${{ steps.current-slot.outputs.target }} || true"
           echo "rolled_back=true" >> "$GITHUB_OUTPUT"
 
   notify-result:
