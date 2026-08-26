@@ -488,7 +488,7 @@ echo "=== Database Restore Complete. Task Exiting. ==="
 | **Estimated Total (Ephemeral)**| Destroyed on off-hours via `terraform destroy` | **~$42.00 / mo** |
 
 > **Cost Optimization Note on NAT Gateway Lifecycle:**  
-> AWS NAT Gateway incurs a fixed hourly charge (~$32/month) regardless of whether container tasks exist [cite: 9]. The **$42/mo ephemeral cost estimate requires that the NAT Gateway, Elastic IP, and route table associations are included in the `terraform destroy` scope** alongside Fargate tasks and RDS during inactive periods [cite: 9]. Leaving the NAT Gateway provisioned 24/7 creates a ~$32/month fixed fee floor [cite: 9].
+> AWS NAT Gateway incurs a fixed hourly charge (~$32/month) regardless of whether container tasks exist. The **$42/mo ephemeral cost estimate requires that the NAT Gateway, Elastic IP, and route table associations are included in the `terraform destroy` scope** alongside Fargate tasks and RDS during inactive periods [cite: 9]. Leaving the NAT Gateway provisioned 24/7 creates a ~$32/month fixed fee floor [cite: 9].
 
 
 ### 10. AWS ORG Architecture
