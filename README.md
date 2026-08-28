@@ -12,7 +12,7 @@
 - [Pipeline Stages](#pipeline-stages)
 - [Infrastructure Layout](#infrastructure-layout)
 - [Deployment Workflows](#deployment-workflows)
-- [Amster2k2x-Test: Enterprise Infrastructure Architecture](#amster2k2x-test-enterprise-infrastructure-architecture)
+- [Amster2k2x-Test: Test Infrastructure Architecture](#amster2k2x-test-test-infrastructure-architecture)
 - [Blue-Green Deploy (Production VPS)](#blue-green-deploy-production-vps)
 - [Database Backup & Restore](#database-backup--restore)
 - [Hard Constraints](#hard-constraints)
@@ -92,7 +92,7 @@ There is no separate "panel" image. The backend image **is** the panel.
 └───────────────────────┬─────────────────────────────────────────┘
                         │
 ┌───────────────────────▼─────────────────────────────────────────┐
-│  Stage 2 — STAGE (AWS ECS Fargate, ephemeral)                   │
+│  Stage 2 — TEST/STAGE (AWS ECS Fargate, ephemeral)              │
 │  • Terraform apply  →  VPC + ALB + RDS + Redis + ECS            │
 │  • DNS validation (ACM cert)                                    │
 │  • Smoke tests + handshake verification                         │
@@ -123,7 +123,7 @@ There is no separate "panel" image. The backend image **is** the panel.
 
 ## Infrastructure Layout
 
-### Terraform
+### Terraform for AWS
 
 ```
 terraform/
@@ -198,7 +198,7 @@ gh workflow run deploy-prod-*.yml -f tag=4.1.0
 
 ---
 
-## Amster2k2x-Test: Enterprise Infrastructure Architecture
+## Amster2k2x-Test: Test Infrastructure Architecture
 **Target Domain:** `test.amster2k2x.mywire.org`  
 **Deployment Region:** `eu-north-1`  
 **Deployment Model:** AWS ECS Fargate (Ephemeral / Cost-Optimized)  
@@ -397,7 +397,7 @@ ENTRYPOINT ["/bin/bash"]
 ---
 
 #### 8.2 S3 Bucket Infrastructure Architecture (Bootstrap Layer)
-The target backup bucket (`amster2k2x-test-backups-eunorth1`) **MUST NOT** be declared inside the ephemeral environment Terraform module (`build/`). Destroying `build/` would terminate the bucket along with all persistent backups, defeating the ephemeral lifecycle design.
+The target backup bucket (`amster2k2x-test-backups`) **MUST NOT** be declared inside the ephemeral environment Terraform module (`build/`). Destroying `build/` would terminate the bucket along with all persistent backups, defeating the ephemeral lifecycle design.
 
 * **Placement:** Declared in the **`bootstrap/` Terraform layer** alongside golden-backup buckets and state stores.
 * **Lifecycle:** Outlives ephemeral `build/` environments; persists indefinitely across `terraform apply` / `terraform destroy` iterations.
@@ -407,7 +407,7 @@ The target backup bucket (`amster2k2x-test-backups-eunorth1`) **MUST NOT** be de
 #### 8.3 IAM & Secrets Management Requirements (Terraform Provisions)
 - **Task Execution Role:** ECR/GHCR pull and CloudWatch logging permissions.
 - **Task Role (`aws_iam_role.db_tools_task_role`):**
-  - **S3 Permissions:** `s3:PutObject` AND `s3:GetObject` on `arn:aws:s3:::amster2k2x-test-backups-eunorth1/*`.
+  - **S3 Permissions:** `s3:PutObject` AND `s3:GetObject` on `arn:aws:s3:::amster2k2x-test-backups/*`.
   - **Secrets Manager Permissions:** `secretsmanager:GetSecretValue` on `amster2k2x/rds/master` secret ARN.
 - **Authentication Alignment:** PostgreSQL connections use the RDS **Master User** (`postgres` / fetched via `amster2k2x/rds/master`) to execute `pg_dump` and `pg_restore` seamlessly against both `remnawave_panel` and `remnawave_bot` databases without permission or auth mismatches.
 
@@ -422,7 +422,7 @@ GitHub Actions launches `db-tools` with command override `["/scripts/backup.sh"]
 set -e
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-S3_BUCKET="s3://amster2k2x-test-backups-eunorth1"
+S3_BUCKET="s3://amster2k2x-test-backups"
 
 echo "=== Extracting Master Credentials from Secrets Manager ==="
 SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id amster2k2x/rds/master --query SecretString --output text)
@@ -454,7 +454,7 @@ Triggered manually or during disaster recovery workflows by launching `db-tools`
 # Executed inside ephemeral 'db-tools' Fargate task during database recovery
 set -e
 
-S3_BUCKET="s3://amster2k2x-test-backups-eunorth1"
+S3_BUCKET="s3://amster2k2x-test-backups"
 
 echo "=== Extracting Master Credentials from Secrets Manager ==="
 SECRET_JSON=$(aws secretsmanager get-secret-value --secret-id amster2k2x/rds/master --query SecretString --output text)
