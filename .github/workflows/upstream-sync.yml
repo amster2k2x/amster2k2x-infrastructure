@@ -2,7 +2,7 @@ name: Upstream sync + build trigger + deploy-test + deploy prod
 
 on:
   schedule:
-    - cron: '05 12 * * 6'   # Saturday 07:05 UTC
+    - cron: '5 13 * * 6'   # Saturday 07:05 UTC
   workflow_dispatch:
     inputs:
       service:
