@@ -518,14 +518,14 @@ nothing about the trust model changes.
 
 ```
 terraform/
-  bootstrap/
-    cicd-runner/        applied ONCE, in cicd-runner-account — OIDC + hub role
-    workload-account/   applied ONCE per workload account — cross-account role,
-                        build/'s state bucket, ACM cert, S3 backups, app secrets
-  build/                single Terraform root, reused for test now / prod later.
-                         Environment differences come entirely from
-                         var.environment + which GitHub Environment's secrets
-                         the workflow uses — not from duplicated directories.
+├──  bootstrap/
+│  ├──  cicd-runner/      # applied ONCE, in cicd-runner-account — OIDC + hub role
+│  └──  workload-account/ # applied ONCE per workload account — cross-account role,
+│                         # build/'s state bucket, ACM cert, S3 backups, app secrets
+└──  build/               # single Terraform root, reused for test now / prod later.
+                          # Environment differences come entirely from
+                          # var.environment + which GitHub Environment's secrets
+                          # the workflow uses — not from duplicated directories.
 
 terraform/build/
 ├── versions.tf          # required_providers (aws), terraform version constraint
@@ -552,11 +552,11 @@ terraform/build/
 └── svc_db_tools.tf      # task definition ONLY — no ECS service (run-task pattern)
 
 .github/workflows/
-  deploy-test.yml     apply → DNS → smoke test → (destroy, unless auto_destroy=false)
-  destroy-test.yml    manual teardown
-  backup-test.yml     capture golden DB backups via ECS Exec
+├── deploy-test.yml      # apply → DNS → smoke test → (destroy, unless auto_destroy=false)
+├── destroy-test.yml     # manual teardown
+├── backup-test.yml      # capture golden DB backups via ECS Exec
 scripts/
-  restore-helper.Dockerfile / restore.sh   used inside build/'s restore sidecar containers
+├── restore-helper.Dockerfile / restore.sh   # used inside build/'s restore sidecar containers
 ```
 
 ---
