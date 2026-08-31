@@ -12,7 +12,7 @@
 - [Pipeline Stages](#pipeline-stages)
 - [Infrastructure Layout](#infrastructure-layout)
 - [Deployment Workflows](#deployment-workflows)
-- [Amster2k2x-Test: Test Infrastructure Architecture](#amster2k2x-test-test-infrastructure-architecture)
+- [Amster2k2x-Test: Test Infrastructure Architecture in AWS Cloud](#amster2k2x-test-test-infrastructure-architecture-in-aws-cloud)
 - [Blue-Green Deploy (Production VPS)](#blue-green-deploy-production-vps)
 - [Database Backup & Restore](#database-backup--restore)
 - [Hard Constraints](#hard-constraints)
@@ -46,7 +46,7 @@ GitHub push → Build + Scan → GHCR/DockerHub
 | Subscription portal | Remnawave subscription page for VPN clients/apps|
 | Node fleet | Remnawave node (9+ VPS servers) |
 | Container registry | `ghcr.io/amster2k2x/` (primary), Docker Hub (secondary) |
-| Test infrastructure | AWS ECS Fargate, `eu-north-1` (ephemeral) |
+| Test infrastructure in AWS CLoud | AWS ECS Fargate, `eu-north-1` (ephemeral) |
 | Production infrastructure | VPS fleet, Docker Compose, blue-green deploy via SSH from Self Hosted Runner |
 | IaC | Terraform (AWS), Docker Compose (VPS prod) |
 | CI/CD | GitHub Actions — reusable workflows in this repo only |
@@ -198,7 +198,7 @@ gh workflow run deploy-prod-*.yml -f tag=4.1.0
 
 ---
 
-## Amster2k2x-Test: Test Infrastructure Architecture
+## Amster2k2x-Test: Test Infrastructure Architecture in AWS Cloud
 **Target Domain:** `test.amster2k2x.mywire.org`  
 **Deployment Region:** `eu-north-1`  
 **Deployment Model:** AWS ECS Fargate (Ephemeral / Cost-Optimized)  
