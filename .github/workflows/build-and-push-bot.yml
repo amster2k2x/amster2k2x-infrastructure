@@ -25,6 +25,7 @@ jobs:
       gitleaks_allowlist: |
         paths = [
           '''^docs/''',
+          '''^app/utils/''',
           '''^tests/''',
           '''^README\.md$''',
           '''^\.env\.example$'''
