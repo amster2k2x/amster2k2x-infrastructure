@@ -25,7 +25,7 @@ jobs:
       gitleaks_allowlist: |
         paths = [
           '''^docs/''',
-          '''^app/utils/''',
+          '''^app/utils/incy_crypt1.py''',
           '''^tests/''',
           '''^README\.md$''',
           '''^\.env\.example$'''
