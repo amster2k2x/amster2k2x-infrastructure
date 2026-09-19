@@ -105,7 +105,7 @@ jobs:
       # Hop 1: GitHub OIDC -> hub role, in cicd-runner-account.
       # This role can do nothing except assume the next role.
       - name: Assume cicd-runner hub role
-        uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6.2.4
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: ${{ secrets.AWS_HUB_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -115,7 +115,7 @@ jobs:
       # Calling configure-aws-credentials again chains onto the hop-1
       # credentials automatically — no static keys anywhere in this flow.
       - name: Assume test-account deploy role
-        uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6.2.4
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
@@ -402,14 +402,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
 
       - name: Assume cicd-runner hub role
-        uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
         with:
           role-to-assume: ${{ secrets.AWS_HUB_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
           role-session-name: gha-hub
 
       - name: Assume test-account deploy role
-        uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
