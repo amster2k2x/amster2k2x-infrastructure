@@ -1,7 +1,12 @@
 name: Test environment - manual teardown
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Destroy even if the backup fails"
+        type: boolean
+        default: false
 
 permissions:
   id-token: write
@@ -51,9 +56,13 @@ jobs:
 
       - name: Run db-tools backup
         run: |
-          TASK_DEF=$(terraform output -raw db_tools_task_definition_arn)
-          SUBNETS=$(terraform output -json private_app_subnet_ids | jq -r 'join(",")')
-          SG=$(terraform output -raw ecs_tasks_sg_id)
+          # Partial/failed applies leave these outputs missing -> nothing to back up.
+          if ! TASK_DEF=$(terraform output -raw db_tools_task_definition_arn 2>/dev/null) \
+            || ! SUBNETS=$(terraform output -json private_app_subnet_ids 2>/dev/null | jq -r 'join(",")') \
+            || ! SG=$(terraform output -raw ecs_tasks_sg_id 2>/dev/null); then
+            echo "::warning::db-tools outputs not in state (partial or failed apply) - skipping backup"
+            exit 0
+          fi
 
           TASK_ARN=$(aws ecs run-task \
             --cluster amster2k2x-test \
@@ -64,20 +73,25 @@ jobs:
             --query 'tasks[0].taskArn' \
             --output text)
 
+          if [ -z "$TASK_ARN" ] || [ "$TASK_ARN" = "None" ]; then
+            echo "::error::run-task did not start a backup task"
+            [ "${{ inputs.force }}" = "true" ] && exit 0 || exit 1
+          fi
+
           echo "Backup task: $TASK_ARN"
           aws ecs wait tasks-stopped --cluster amster2k2x-test --tasks "$TASK_ARN"
 
           EXIT_CODE=$(aws ecs describe-tasks \
             --cluster amster2k2x-test \
             --tasks "$TASK_ARN" \
-            --query 'tasks[0].{stopCode:stopCode,stoppedReason:stoppedReason,containers:containers[*].{name:name,reason:reason,exitCode:exitCode}}' \
-            --output json)
+            --query 'tasks[0].containers[0].exitCode' \
+            --output text)
 
           if [ "$EXIT_CODE" != "0" ]; then
-            echo "::error::db-tools backup failed with exit code $EXIT_CODE"
-            exit 0
+            echo "::error::db-tools backup failed (exit code: $EXIT_CODE)"
+            [ "${{ inputs.force }}" = "true" ] && exit 0 || exit 1
           fi
-          echo "Backup complete — safe to destroy."
+          echo "Backup complete - safe to destroy."
 
       - name: Terraform destroy
         run: terraform destroy -auto-approve
