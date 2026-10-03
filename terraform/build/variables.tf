@@ -25,6 +25,12 @@ variable "vpc_cidr" {
   default     = "10.0.0.0/16"
 }
 
+variable "azs" {
+  type        = list(string)
+  description = "Availability zones for all subnet tiers. Must include eu-north-1c: db.t4g.micro + gp3 currently has no RDS capacity in 1a/1b."
+  default     = ["eu-north-1b", "eu-north-1c"]
+}
+
 # --- Image tags, supplied by the GitHub Actions run that triggered this apply ---
 # Each defaults to :latest so `terraform plan` works standalone, but CI should
 # always pass the exact digest/tag it just built and scanned.

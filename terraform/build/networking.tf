@@ -9,8 +9,8 @@ data "aws_availability_zones" "available" {
 }
 
 locals {
-  az_count = 2
-  azs      = slice(data.aws_availability_zones.available.names, 0, local.az_count)
+  azs      = var.azs
+  az_count = length(var.azs)
 
   # /24s carved out of var.vpc_cidr (expected /16):
   #   public:  10.0.1.0/24,  10.0.2.0/24
